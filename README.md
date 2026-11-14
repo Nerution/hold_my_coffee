@@ -21,6 +21,7 @@ Then open http://localhost:8000. Opening `index.html` directly from disk also wo
 - `S`: all app state (preferences, saved collections, reading history). It is kept in memory only and resets on reload.
 - `ranked()`: feed ordering. Chosen topics, followed sources and chosen regions lift a story; one story from outside the chosen topics is moved into the first few.
 - `V`: one function per screen, each returning an HTML string.
+- `ask()` and `V.assistant`: the AI assistant preview. It only retrieves stories already in `STORIES` (topic, place, region and time window such as "this month"), and says so when nothing matches. It never writes a story of its own.
 - `A`: one function per action. Clicks are routed by the `data-a` attribute on the clicked element.
 - `t(key, ...args)`: interface text. The English string is the key; `st(story, field)` does the same for story text.
 
@@ -32,5 +33,6 @@ In `i18n.js`, add a column to every row of `R`, a block to `raw`, an entry in `l
 
 - Pictures are drawn SVG placeholders, not photography.
 - Translations were written by AI and have not been reviewed by native speakers.
-- Technology, Culture, Education, Sports and Business have no sample stories.
-- The AI assistant from the brief is not built.
+- Each topic has at least one sample story, but most have only one or two.
+- The assistant matches keywords in place of a language model. In the live app a model would interpret the question, but answers would still come only from the verified story database.
+- Recent story links were checked by search; their pages were not opened from the build environment.

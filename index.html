@@ -89,7 +89,7 @@ input[type=text],input[type=search],input[type=time]{font:inherit;color:var(--in
 /* story card */
 .card{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;cursor:pointer;display:block}
 .art{position:relative;aspect-ratio:16/9;background:var(--sunk)}
-.art svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.art>svg{position:absolute;inset:0;width:100%;height:100%;display:block}
 .tag{position:absolute;left:12px;bottom:12px;background:rgba(255,253,248,.94);color:#1F3D2F;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:5px 10px;border-radius:6px;border-left:3px solid var(--sun)}
 .cbody{padding:14px 16px 8px;display:flex;flex-direction:column;gap:7px}
 .cat{font-size:12px;font-weight:600;color:var(--sage-ink);letter-spacing:.03em}
@@ -187,6 +187,15 @@ nav .center .orb svg{width:26px;height:26px}
 .banner{background:var(--blue-soft);border-radius:12px;padding:10px 14px;font-size:13px;display:flex;gap:10px;align-items:center}
 .banner span{flex:1}
 .banner button{font-weight:600;color:var(--blue);text-decoration:underline}
+.chat{display:flex;flex-direction:column;gap:14px}
+.bub{max-width:88%;padding:11px 14px;border-radius:16px;font-size:15px;line-height:1.45}
+.bub.me{align-self:flex-end;background:var(--forest);color:var(--on-forest);border-bottom-right-radius:5px}
+.bub.bot{align-self:flex-start;background:var(--surface);box-shadow:var(--shadow);border-bottom-left-radius:5px;display:flex;flex-direction:column;gap:8px}
+.bub.bot .mini{margin:0;box-shadow:none;background:var(--bg)}
+.asknote{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.askbar{position:sticky;bottom:0;padding:10px 0 4px;background:linear-gradient(to top,var(--bg) 75%,transparent)}
+.suggest{display:flex;flex-direction:column;gap:8px}
+.suggest .chip{text-align:left;border-radius:14px}
 .searchbar{display:flex;gap:8px}
 .searchbar button{width:48px;border-radius:12px;background:var(--forest);color:var(--on-forest);display:grid;place-items:center;flex:none}
 .mapbox{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);padding:10px}
@@ -372,14 +381,59 @@ const STORIES=[
  why:"The findings confirm a rapid onset and a durable effect, building on results from the first Phase 3 trial.",
  bigger:"The results were announced by the company developing the treatment. Independent review of the full data matters before drawing firm conclusions.",
  source:"Life Science Daily News",url:"https://lifesciencedaily.news/?p=10941",date:"2026-07-10",also:[],
- kw:"medical medicine health mental depression treatment research trial breakthroughs",moods:["progress"]}
+ kw:"medical medicine health mental depression treatment research trial breakthroughs",moods:["progress"]},
+{id:"bci",cat:"Technology",tag:"Breakthrough",art:"signal",country:"United States",w:.8,read:5,serious:1,
+ title:"Man with ALS uses a brain implant to talk with family at home, without researchers on hand",
+ sum:"A Nature Medicine study reports that Casey Harrell has used a speech brain-computer interface on his own for nearly two years, averaging 56 words per minute.",
+ what:"UC Davis researchers reported in Nature Medicine that Casey Harrell, a 47-year-old man with ALS in the BrainGate2 trial, now uses his implanted brain-computer interface at home without a research team member setting it up.",
+ why:"Across nearly two years he communicated close to 2 million words at an average of 56 words per minute, and rated 92% of sentences as accurate or mostly correct. He also uses it to send emails and messages and browse the internet.",
+ bigger:"The device is investigational and the results come from one participant. It does not treat ALS itself, and the trial is still enrolling people.",
+ source:"UC Davis Health",url:"https://health.ucdavis.edu/news/headlines/brain-computer-interface-enables-independent-accurate-communication-for-man-living-with-als/2026/06",date:"2026-06-16",
+ also:[["Nature (press release)","https://www.natureasia.com/en/info/press-releases/detail/9358"],["EurekAlert!","https://www.eurekalert.org/news-releases/1132151"]],
+ kw:"technology tech brain implant computer interface als disability speech communication neuroscience medical breakthrough breakthroughs",moods:["amazing","progress"]},
+{id:"iread",cat:"Education",tag:"Good Trend",art:"books",country:"United States",w:.6,read:4,
+ title:"Indiana third graders' reading results improve for a fifth year and pass pre-pandemic levels",
+ sum:"88.7% of third graders passed the state's IREAD test in 2026, above the 87.3% recorded in 2019.",
+ what:"Indiana's 2026 IREAD results show 88.7% of third graders demonstrating proficient reading skills, the fifth straight year of improvement.",
+ why:"Pass rates fell sharply during the pandemic. The new figure is above the 2019 rate of 87.3%, and coverage reports gains across every student group.",
+ bigger:"About 9,194 students still are not reading proficiently by the end of third grade, and national reading scores in the US remain below pre-pandemic levels.",
+ source:"Chalkbeat",url:"https://www.chalkbeat.org/indiana/2026/08/11/iread-pass-rates-surpass-pre-covid-literacy-levels/",date:"2026-08-11",
+ also:[["WFYI","https://wfyi.org/education/2026-08-11/indiana-2026-iread-ilearn-student-test-results-school-a-f-grades"],["Indiana Capital Chronicle","https://indianacapitalchronicle.com/2026/08/17/from-crisis-to-five-years-of-gains-indianas-reading-success-story/"]],
+ kw:"education school schools reading literacy children students teachers learning",moods:["hope","progress"]},
+{id:"artrecovery",cat:"Culture",tag:"Recovery",art:"gallery",country:"Italy",w:.6,read:3,
+ title:"Italian police recover stolen paintings by Renoir, Cézanne and Matisse",
+ sum:"The three works, taken in March from a foundation near Parma, were found by the Carabinieri during searches on 14 August.",
+ what:"Italy's Carabinieri recovered three paintings by Renoir, Cézanne and Matisse that were stolen in March from the Fondazione Magnani-Rocca near Parma.",
+ why:"The works are worth millions and belong to a collection open to the public. Recovering stolen art quickly makes it far more likely to return undamaged.",
+ bigger:"The investigation is still going on, and art theft has not stopped: in the same week, four Renaissance-era paintings were stolen from a museum in Messina, Sicily.",
+ source:"Associated Press",url:"https://www.local10.com/news/world/2026/08/14/italian-police-recover-stolen-renoir-cezanne-and-matisse-artworks-worth-millions/",date:"2026-08-14",
+ also:[["PBS NewsHour","https://pbs.org/newshour/arts/italian-police-recover-stolen-renoir-cezanne-and-matisse-paintings-worth-millions"],["Artnet","https://news.artnet.com/art-world/italy-brazil-stolen-art-recovered-2797930"]],
+ kw:"culture art arts painting paintings museum heritage europe italy",moods:["smile","amazing"]},
+{id:"eala",cat:"Sports",tag:"Milestone",art:"court",country:"Philippines",w:.6,read:3,
+ title:"Alexandra Eala becomes the first Filipino to win a WTA singles title",
+ sum:"The 21-year-old came back from a set down to beat top seed Jessica Pegula in the Washington final and moved into the world top 20.",
+ what:"Alexandra Eala won the WTA 500 tournament in Washington, beating top seed Jessica Pegula in a final that resumed on Monday after weather delays.",
+ why:"It is the first WTA Tour singles title won by a player from the Philippines. On the way she also beat Zheng Qinwen, Leylah Fernandez, Elina Svitolina and Naomi Osaka.",
+ bigger:"The win comes a year after she lost her first tour-level final in Eastbourne despite holding championship points, and lifts her into the top 20 for the first time.",
+ source:"Punto de Break",url:"https://www.puntodebreak.com/en/2026/08/03/eala-conquers-glory-in-washington-and-breaks-into-the-top-20-of-the-wta-ranking",date:"2026-08-03",
+ also:[["GMA News","https://www.gmanetwork.com/news/sports/othersports/997238/philippines-eala-beats-pegula-to-win-first-wta-title-in-washington/story/"],["Khaleej Times","https://khaleejtimes.com/sports/tennis/filipina-star-eala-makes-history-wins-first-wta-title-in-washington"]],
+ kw:"sports sport tennis athlete asia philippines women inspiring",moods:["smile","faith"]},
+{id:"poverty",cat:"Business & Economy",tag:"Good Trend",art:"market",country:"United States",w:.5,read:4,
+ title:"US official poverty rate falls to the lowest level on record",
+ sum:"Census Bureau data put the 2025 official poverty rate at 10.2%, with median household income at a record $87,460.",
+ what:"The US Census Bureau's annual report found the official poverty rate fell to 10.2% in 2025, the lowest on record. Median household income reached an all-time high of $87,460.",
+ why:"The official child poverty rate also fell to a historic low of 13.4%, a measure closely linked to children's health and education outcomes.",
+ bigger:"Experts are cautious. The supplemental poverty measure, which counts benefits and costs, stayed essentially unchanged at 13.1%, and the data do not yet reflect recent federal policy changes.",
+ source:"Stateline",url:"https://stateline.org/2026/09/15/census-data-shows-us-poverty-rate-drops-to-lowest-on-record-but-experts-are-cautious/",date:"2026-09-15",
+ also:[["Associated Press (Fact Focus)","https://www.washingtontimes.com/news/2026/sep/29/fact-focus-poverty-rate-time-low-factors-consider/"]],
+ kw:"business economy economic money income poverty jobs families children census",moods:["progress","world"]}
 ];
 const byId=id=>STORIES.find(s=>s.id===id);
 const CATS=["Environment & Nature","Science","Health & Medicine","Technology","Animals","World","Humanity & Community","Space","Culture","Education","Sports","Business & Economy","Local Communities","Innovation","Inspiring People","Conservation"];
 const SOURCES=[...new Set(STORIES.map(s=>s.source))].concat(["Reuters","BBC News"]);
 const MOODS=[["hope","Give me hope"],["smile","Make me smile"],["amazing","Show me something amazing"],["faith","Restore my faith in humanity"],["progress","Show me progress"],["animals","Show me animals"],["world","Show me the world getting better"],["calm","Give me something calm"]];
-const REGIONS={"Europe":["Poland","Germany","France","United Kingdom","Spain","Italy","Sweden","Ukraine"],"Americas":["United States","Canada","Mexico","Brazil","Argentina"],"Africa":["South Africa","Kenya","Nigeria","Ethiopia","Egypt"],"Asia":["Kazakhstan","Japan","India","China","Indonesia"],"Oceania":["Australia","New Zealand"]};
-const PLACES={"Brazil":[-58,-6],"Poland":[20,52],"Kazakhstan":[67,48],"South Africa":[29,-29],"Australia":[134,-25],"United States":[-98,39]};
+const REGIONS={"Europe":["Poland","Germany","France","United Kingdom","Spain","Italy","Sweden","Ukraine"],"Americas":["United States","Canada","Mexico","Brazil","Argentina"],"Africa":["South Africa","Kenya","Nigeria","Ethiopia","Egypt"],"Asia":["Kazakhstan","Japan","India","China","Indonesia","Philippines"],"Oceania":["Australia","New Zealand"]};
+const PLACES={"Brazil":[-58,-6],"Italy":[10,40],"Philippines":[122,12],"Poland":[20,52],"Kazakhstan":[67,48],"South Africa":[29,-29],"Australia":[134,-25],"United States":[-98,39]};
 
 /* ---------- state (in memory for this session) ---------- */
 const S={screen:"splash",p:{},stack:[],tab:"home",
@@ -419,6 +473,14 @@ function art(kind){
     return o+`<rect width="400" height="240" fill="#F0E8D8"/><circle cx="330" cy="58" r="24" fill="#E2AE3A" opacity=".85"/>${h}<rect y="212" width="400" height="28" fill="#6C9175"/></svg>`}
   if(kind==="plains"){let g="";for(let i=0;i<26;i++)g+=`<path d="M${8+i*15.5} 236q3-${14+i%4*5} 8-${22+i%3*6}" stroke="#7E8F55" stroke-width="2" fill="none"/>`;
     return o+`<rect width="400" height="240" fill="#EFE4CB"/><circle cx="118" cy="92" r="38" fill="#E2AE3A" opacity=".9"/><path d="M0 150q120-34 240-10t160-18v118H0z" fill="#CDBB86"/><path d="M0 190q140-30 400-10v60H0z" fill="#A8AE74"/><path d="M286 134l10-30 6 30z" fill="#35513F"/><path d="M268 140q28-26 60 0z" fill="#35513F"/>${g}</svg>`}
+  if(kind==="signal"){let w="";for(let i=0;i<40;i++){const x=10+i*9.6,h=6+Math.abs(Math.sin(i*.55))*34*(i>12&&i<30?1.6:.6);w+=`<rect x="${x}" y="${132-h}" width="4.4" height="${h*2}" rx="2.2" fill="${i>12&&i<30?"#E2AE3A":"#8FAE96"}" opacity="${i>12&&i<30?.95:.7}"/>`}
+    return o+`<rect width="400" height="240" fill="#EAF0EE"/><circle cx="200" cy="132" r="96" fill="#DDE7E4"/>${w}<path d="M40 214h320" stroke="#3F647C" stroke-width="2" opacity=".35"/></svg>`}
+  if(kind==="books"){const c=["#3F647C","#E2AE3A","#6C9175","#C9B592","#24493A","#8FAE96","#557891"];let b="";for(let i=0;i<7;i++){const h=70+(i*23%40),x=96+i*30;b+=`<rect x="${x}" y="${206-h}" width="26" height="${h}" rx="2" fill="${c[i]}"/><rect x="${x+5}" y="${216-h}" width="16" height="3" fill="#F8F5EE" opacity=".7"/>`}
+    return o+`<rect width="400" height="240" fill="#F3EBDD"/><circle cx="318" cy="66" r="26" fill="#E2AE3A" opacity=".75"/>${b}<rect x="70" y="206" width="260" height="10" rx="2" fill="#35513F"/></svg>`}
+  if(kind==="gallery")return o+`<rect width="400" height="240" fill="#EFE7DA"/><rect y="196" width="400" height="44" fill="#C9B592"/><rect x="38" y="52" width="104" height="128" fill="#5B3F2A"/><rect x="48" y="62" width="84" height="108" fill="#A9BFA6"/><circle cx="90" cy="100" r="18" fill="#E2AE3A"/><path d="M48 170l30-40 22 26 32-36v50z" fill="#35513F"/><rect x="164" y="40" width="88" height="112" fill="#5B3F2A"/><rect x="173" y="49" width="70" height="94" fill="#DFE9EC"/><path d="M173 120q35-30 70 0v23h-70z" fill="#557891"/><circle cx="208" cy="80" r="12" fill="#C97C5D"/><rect x="274" y="66" width="92" height="100" fill="#5B3F2A"/><rect x="283" y="75" width="74" height="82" fill="#F3E9D2"/><path d="M296 140c10-40 30-40 48-8" stroke="#C97C5D" stroke-width="7" fill="none"/><circle cx="318" cy="102" r="10" fill="#3F647C"/></svg>`;
+  if(kind==="court")return o+`<rect width="400" height="240" fill="#6C9175"/><path d="M60 228L120 40h160l60 188z" fill="#557F68" stroke="#F8F5EE" stroke-width="3"/><path d="M90 134h220M200 40v188M105 87h190" stroke="#F8F5EE" stroke-width="2.4"/><path d="M76 140h248" stroke="#24493A" stroke-width="5"/><circle cx="268" cy="92" r="11" fill="#E2D45A"/><path d="M259 86q9 6 18 0" stroke="#F8F5EE" stroke-width="1.6" fill="none"/></svg>`;
+  if(kind==="market"){let b="";[44,58,52,70,82,78,96,110].forEach((h,i)=>b+=`<rect x="${58+i*38}" y="${206-h}" width="24" height="${h}" rx="3" fill="${i>5?"#24493A":"#8FAE96"}"/>`);
+    return o+`<rect width="400" height="240" fill="#EEF0E6"/><circle cx="96" cy="64" r="26" fill="#E2AE3A" opacity=".8"/>${b}<path d="M64 150q90-30 150-60t140-46" stroke="#E2AE3A" stroke-width="3" fill="none" stroke-dasharray="2 6" stroke-linecap="round"/><rect x="40" y="206" width="320" height="4" fill="#35513F"/></svg>`}
   let c="";[[90,80,44],[220,130,58],[320,70,30],[150,190,26],[340,180,40]].forEach(([x,y,r],i)=>c+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${i%2?"#A9BFA6":"#557891"}" opacity=".55"/><circle cx="${x}" cy="${y}" r="${r*.38}" fill="${i%2?"#35513F":"#E2AE3A"}" opacity=".8"/>`);
   return o+`<rect width="400" height="240" fill="#E4ECEA"/>${c}</svg>`;
 }
@@ -541,7 +603,8 @@ V.discover=()=>`<div class="pad"><h1 style="font-size:28px">${t("Discover")}</h1
  <form class="searchbar" data-form="search"><input type="search" id="q" placeholder="${t("Try “good news from Poland”")}" aria-label="${t("Search good news")}"><button aria-label="${t("Search")}">${ic("search")}</button></form>
  <div class="hscroll">${QUERIES.map(q=>`<button class="chip" data-a="search" data-q="${t(q)}">${t(q)}</button>`).join("")}</div>
  <div class="grid2"><button class="tile wide" data-a="go" data-to="map">${ic("globe")}<span><b>${t("Good News Map")}</b><br><span class="small muted">${t("Good things, by place")}</span></span></button>
-  <button class="tile wide" data-a="go" data-to="weekly">${ic("chart")}<span><b>${t("This Week Wasn't All Bad")}</b><br><span class="small muted">${t("Your weekly perspective")}</span></span></button></div>
+  <button class="tile wide" data-a="go" data-to="weekly">${ic("chart")}<span><b>${t("This Week Wasn't All Bad")}</b><br><span class="small muted">${t("Your weekly perspective")}</span></span></button>
+  <button class="tile wide" data-a="go" data-to="assistant">${ic("spark")}<span><b>${t("Ask Good Things")}</b><br><span class="small muted">${t("AI assistant · answers only from verified stories")}</span></span></button></div>
  <div class="eyebrow">${t("What do you need right now?")}</div><div class="grid2">${MOODS.map(m=>`<button class="tile mood" data-a="go" data-to="moodfeed" data-m="${m[0]}"><b>${t(m[1])}</b></button>`).join("")}</div>
  <div class="eyebrow">${t("Browse by topic")}</div><div class="grid2">${CATS.map(c=>{const n=STORIES.filter(s=>s.cat===c).length;return `<button class="tile" data-a="go" data-to="category" data-c="${esc(c)}"><b>${esc(t(c))}</b><span class="small muted">${n?t("Stories: {0}",n):t("No sample stories")}</span></button>`}).join("")}</div></div>`;
 V.category=()=>{const l=STORIES.filter(s=>s.cat===S.p.c);return bar(esc(t(S.p.c)))+`<div class="pad" style="padding-top:8px">${l.map(s=>card(s)).join("")||empty(t("No sample stories for this topic in the prototype. The live app would fill it from verified sources."))}</div>`};
@@ -557,6 +620,37 @@ V.search=()=>{const {toks,res}=search(S.p.q||"");return bar(t("Search"))+`<div c
  <form class="searchbar" data-form="search"><input type="search" id="q" value="${esc(S.p.q||"")}" aria-label="${t("Search good news")}"><button aria-label="${t("Search")}">${ic("search")}</button></form>
  <p class="small muted">${toks.length?`${t("Understood as")}: ${toks.map(x=>`<b style="color:var(--ink)">${esc(x)}</b>`).join(" + ")} · ${t("Sourced stories: {0}",res.length)}`:t("Type a place, topic or kind of progress.")}</p>
  ${res.map(mini).join("")||(toks.length?empty(t("Nothing verified matches that yet. The app never invents a story to fill a gap.")):"")}</div>`};
+
+/* AI assistant preview: answers only from the STORIES library, never generates a story */
+const ASK_SUGGEST=["Has anything good happened in medicine recently?","I'm feeling overwhelmed. Show me some environmental progress from this month.","Any good news about animals?","What's going well in education?"];
+const ASK_STOP=new Set("i im i'm me my we you your can could would please just some any anything something everything good great nice news positive happened happening happen has have had is are was were be been there what whats what's going well show tell give find about from in on of for the a an and or to with by at this that these those month week year recently lately today latest new feeling feel overwhelmed overwhelming anxious stressed sad tired worried world's lot so much really".split(" "));
+const ASK_GENERIC=new Set(["progress","breakthrough","breakthroughs","hope","hopeful","inspiring","success","win","wins"]);
+function ask(q){
+  const low=q.toLowerCase(),days=/this week|past week|w tym tygodniu|diese woche|esta semana/.test(low)?7:/this month|past month|last month|w tym miesiącu|diesen monat|este mes/.test(low)?31:/recent|lately|ostatnio|kürzlich|neulich|reciente|últimamente/.test(low)?120:0;
+  const stop=new Set([...ASK_STOP,...(((I18N.stop||{})[LANG]||"").split(" "))]);
+  const toks=low.replace(/[^\p{L}\s'-]/gu," ").split(/\s+/).filter(x=>x&&x.length>2&&!stop.has(x));
+  const topic=toks.filter(x=>!ASK_GENERIC.has(x)),stem=x=>x.slice(0,Math.max(4,x.length-2));
+  const scored=STORIES.filter(s=>!S.hidden.has(s.source)).map(s=>{const reg=Object.keys(REGIONS).find(r=>REGIONS[r].includes(s.country))||"",cat=(t(s.cat)+" "+s.cat).toLowerCase();
+    const hay=[st(s,"title"),st(s,"sum"),cat,t(s.country),s.country,reg,reg&&t(reg),t(s.tag),s.source,s.kw,LANG!=="en"?st(s,"kw"):""].join(" ").toLowerCase();
+    const tm=topic.filter(x=>hay.includes(stem(x))).length,cm=topic.filter(x=>cat.includes(stem(x))).length,gm=toks.filter(x=>ASK_GENERIC.has(x)&&hay.includes(stem(x))).length;return {s,score:tm*2+cm+gm,ok:topic.length?tm>0:gm>0}}).filter(x=>x.ok);
+  scored.sort((a,b)=>b.score-a.score||b.s.date.localeCompare(a.s.date));
+  const age=s=>(Date.now()-new Date(s.date+"T12:00:00Z"))/864e5;
+  const inWin=days?scored.filter(x=>age(x.s)<=days):scored;
+  const calm=/overwhelm|anxious|stress|worried|scared|sad|tired|exhaust|przytłocz|przytłacz|zmęcz|überfordert|erschöpft|agobi|cansad/.test(low);
+  let out=(inWin.length?inWin:scored).slice(0,5).map(x=>x.s.id),note="";
+  if(days&&!inWin.length&&out.length)note=t("None of the matching stories are from that period. These are the most recent ones, with their dates.");
+  return {ids:out,calm,note};
+}
+V.assistant=()=>{const c=S.chat||[];
+ return bar(t("Ask Good Things"),`<span class="ai" style="margin-left:auto">${t("Preview")}</span>`)+`<div class="pad" style="padding-top:8px;min-height:calc(100% - 64px);display:flex;flex-direction:column">
+ <div class="chat">
+  <div class="bub bot"><span>${t("Ask about real progress. I only answer from verified stories in the app, and every card links to its publisher. If nothing fits, I'll say so instead of making something up.")}</span></div>
+  ${c.map(m=>m.me?`<div class="bub me">${esc(m.me)}</div>`:`<div class="bub bot">${m.calm?`<span>${t("That's understandable. Here is some real progress, at your own pace.")}</span>`:""}<span>${m.ids.length?(m.ids.length===1?t("Here is one encouraging development from the verified library."):t("Here are {0} encouraging developments from the verified library.",m.ids.length)):t("I couldn't find a verified story about that, and I won't invent one. Try a broader topic or a different place.")}</span>${m.note?`<span class="small muted">${m.note}</span>`:""}${m.ids.map(id=>mini(byId(id))).join("")}<span class="asknote"><span class="ai">${t("AI")}</span>${t("Reply written by AI. The stories are real and sourced.")}</span></div>`).join("")}
+ </div>
+ ${c.length?"":`<div class="eyebrow" style="margin-top:20px">${t("Try asking")}</div><div class="suggest">${ASK_SUGGEST.map(q=>`<button class="chip" data-a="ask" data-q="${esc(t(q))}">${t(q)}</button>`).join("")}</div>`}
+ <div class="spacer"></div>
+ <div class="askbar"><form class="searchbar" data-form="ask"><input type="text" placeholder="${t("Ask about good news…")}" aria-label="${t("Ask about good news")}"><button aria-label="${t("Ask")}">${ic("spark")}</button></form>
+ ${c.length?`<button class="btn ghost" style="margin-top:8px" data-a="askClear">${t("Start over")}</button>`:""}</div></div>`};
 
 function mapSvg(sel){
   const R=[[[18,26],[45,48]],[[9,17],[21,26],[43,51]],[[3,19],[21,23],[26,27],[32,59]],[[3,6],[8,13],[17,19],[22,22],[31,57]],[[8,20],[28,29],[31,53],[56,56]],[[9,21],[29,52]],[[9,18],[28,37],[39,51],[53,53]],[[10,17],[29,31],[35,49],[51,53]],[[11,16],[28,50]],[[12,13],[27,39],[41,49]],[[13,15],[18,18],[27,39],[42,44],[46,48],[50,50]],[[15,16],[27,37],[42,43],[46,48],[50,50]],[[17,21],[28,37],[46,47],[49,49]],[[17,21],[31,37],[46,50]],[[17,24],[32,36],[47,48],[52,55]],[[17,23],[32,36],[52,53]],[[18,23],[32,36],[37,38],[50,54]],[[18,23],[32,35],[37,37],[49,55]],[[18,21],[33,35],[49,55]],[[18,20],[53,54],[59,59]],[[18,19],[54,54],[58,58]],[[17,18]],[[18,18]]];
@@ -666,6 +760,8 @@ const A={
   notif:d=>{S.notif[d.k]=d.v;render(1)},
   dark:()=>{document.documentElement.classList.toggle("dark");render(1)},
   toast:d=>toast(d.t),
+  ask:d=>{const r=ask(d.q);S.chat=(S.chat||[]).concat({me:d.q},r);render(1);const sc=$("screen");sc.scrollTop=sc.scrollHeight},
+  askClear:()=>{S.chat=[];render(1)},
   jump:d=>{if(d.to==="dark")return A.dark();if(d.to==="good")return A.good();if(d.to==="lang")return A.langSheet();
     const tabOf={home:"home",discover:"discover",saved:"saved",profile:"profile"};S.stack=[];
     if(tabOf[d.to]){A.tab({to:d.to});return}
@@ -674,7 +770,7 @@ const A={
     const p=d.to==="article"?{id:"amazon"}:d.to==="search"?{q:t("good news from Poland")}:d.to==="moodfeed"?{m:"hope"}:d.to==="category"?{c:"Conservation"}:{};
     S.stack=[{screen:S.tab,p:{}}];go(d.to,p,false)}
 };
-const GUIDE=[["splash","Splash"],["ob1","Onboarding"],["ob2","Topic selection"],["ob3","Source selection"],["obr","Region selection"],["home","Home feed"],["dose","Daily Dose"],["article","Article + AI summary"],["good","Something good"],["discover","Discover"],["category","Category feed"],["search","Search"],["moodfeed","Mood discovery"],["map","Good News Map"],["sources","My Sources"],["saved","Saved stories"],["weekly","Weekly Perspective"],["profile","Profile"],["personal","Personalisation"],["notifs","Notifications"],["plans","Plans"],["lang","Language"],["dark","Toggle dark mode"]];
+const GUIDE=[["splash","Splash"],["ob1","Onboarding"],["ob2","Topic selection"],["ob3","Source selection"],["obr","Region selection"],["home","Home feed"],["dose","Daily Dose"],["article","Article + AI summary"],["good","Something good"],["discover","Discover"],["category","Category feed"],["search","Search"],["moodfeed","Mood discovery"],["map","Good News Map"],["sources","My Sources"],["saved","Saved stories"],["weekly","Weekly Perspective"],["assistant","AI assistant"],["profile","Profile"],["personal","Personalisation"],["notifs","Notifications"],["plans","Plans"],["lang","Language"],["dark","Toggle dark mode"]];
 
 function init(){
   const root=document.documentElement,th=root.getAttribute("data-theme");
@@ -688,6 +784,7 @@ function init(){
   });
   document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches("article[data-a],g[data-a]")){e.preventDefault();A[e.target.dataset.a](e.target.dataset)}});
   document.addEventListener("submit",e=>{e.preventDefault();const f=e.target.dataset.form;
+    if(f==="ask"){const i=e.target.querySelector("input"),q=i.value.trim();if(q)A.ask({q});return}
     if(f==="search"){const q=e.target.querySelector("input").value.trim();if(q)go("search",{q},S.screen!=="search")}
     if(f==="newcol"){const v=e.target.querySelector("input").value.trim();if(!v)return;S.cols.push({name:v,ids:e.target.dataset.id?[e.target.dataset.id]:[]});toast(t("Collection created"));closeSheet();render(1)}
   });
