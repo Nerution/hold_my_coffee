@@ -1,0 +1,30 @@
+{
+  "appId": "com.goodthings.news",
+  "appName": "Good Things",
+  "webDir": "www",
+  "backgroundColor": "#F6F2EA",
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#F6F2EA"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#1F3D2F",
+      "showSpinner": false,
+      "androidScaleType": "CENTER_CROP"
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_good_things",
+      "iconColor": "#1F3D2F"
+    },
+    "StatusBar": {
+      "overlaysWebView": false,
+      "style": "LIGHT",
+      "backgroundColor": "#F6F2EA"
+    }
+  }
+}

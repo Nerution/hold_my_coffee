@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_name">Dobre wiadomości</string>
+    <string name="widget_description">Najważniejsza dobra wiadomość dnia</string>
+    <string name="widget_empty">Otwórz Good Things, aby wczytać dzisiejsze dobre wiadomości.</string>
+</resources>

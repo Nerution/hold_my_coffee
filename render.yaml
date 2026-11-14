@@ -1,0 +1,17 @@
+# One-click hosting of the news server on Render (https://render.com).
+# In Render: New > Blueprint, pick this repository. The app's news service and
+# privacy policy are then served at https://<name>.onrender.com and /privacy.html.
+services:
+  - type: web
+    name: good-things
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /privacy.html
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: GOOD_THINGS_TRANSLATOR
+        value: google

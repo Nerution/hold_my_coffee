@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_name">Good news</string>
+    <string name="widget_label">Good Things</string>
+    <string name="widget_description">Today\'s top good-news headline</string>
+    <string name="widget_empty">Open Good Things to load today\'s good news.</string>
+    <color name="widget_surface">#FFFDF8</color>
+    <color name="widget_ink">#1D2B23</color>
+    <color name="widget_muted">#66716A</color>
+    <color name="widget_accent">#35513F</color>
+</resources>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Good Things App Prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
@@ -53,6 +53,13 @@ svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;str
   .stage{padding:0;gap:0}.guide{display:none}
   .phone{width:100%;height:100%;border-radius:0;box-shadow:none}
 }
+/* installed app (Android/iOS build): full screen, no prototype index, room for notches and home indicators */
+html.app .stage{padding:0;gap:0}html.app .guide{display:none}
+html.app .phone{width:100%;height:100%;border-radius:0;box-shadow:none;padding-top:env(safe-area-inset-top)}
+html.app #nav{padding-bottom:max(8px,env(safe-area-inset-bottom))}
+#lock{position:absolute;inset:0;z-index:50;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;text-align:center}
+#lock.on{display:flex}
+#lock .mark{width:72px;height:72px}
 
 /* shared */
 .pad{padding:18px 18px 28px;display:flex;flex-direction:column;gap:18px}
@@ -252,6 +259,7 @@ nav .center .orb svg{width:26px;height:26px}
     <nav id="nav" hidden></nav>
     <div id="sheet"></div>
     <div id="toast" role="status"></div>
+    <div id="lock" role="dialog" aria-modal="true"></div>
   </div>
 </div>
 <script src="i18n.js"></script>
@@ -441,10 +449,21 @@ const STORIES=[
  also:[["Associated Press (Fact Focus)","https://www.washingtontimes.com/news/2026/sep/29/fact-focus-poverty-rate-time-low-factors-consider/"]],
  kw:"business economy economic money income poverty jobs families children census",moods:["progress","world"]}
 ];
+/* ---------- app build and device ---------- */
+const CFG=window.GOOD_THINGS_CONFIG||{};            // written by scripts/build-web.mjs in the Android/iOS build
+const APP=!!CFG.app;                                // running as the installed app
+const NATIVE=!!(window.GTNative&&window.GTNative.isNative);
+if(APP)document.documentElement.classList.add("app");
+const store={                                       // device storage: Preferences in the app, localStorage on the web
+  async get(k){if(NATIVE)return GTNative.storage.get(k);try{return localStorage.getItem(k)}catch(e){return null}},
+  async set(k,v){if(NATIVE)return GTNative.storage.set(k,v);try{localStorage.setItem(k,v)}catch(e){}},
+  async remove(k){if(NATIVE)return GTNative.storage.remove(k);try{localStorage.removeItem(k)}catch(e){}},
+};
+const SAVED=new Map();                              // full copies of saved stories, readable offline
 const ARCHIVE=new Map();
-const byId=id=>STORIES.find(s=>s.id===id)||ARCHIVE.get(id);
+const byId=id=>STORIES.find(s=>s.id===id)||SAVED.get(id)||ARCHIVE.get(id);
 /* live news: filled from the server's /api/stories; the sample STORIES stay when it can't be reached */
-const LIVE={state:"idle",base:null,updatedAt:null,ai:null,sources:[],windowDays:10,error:""};
+const LIVE={state:"idle",base:null,offline:false,cachedAt:null,updatedAt:null,ai:null,sources:[],windowDays:10,error:""};
 const isLive=()=>LIVE.state==="live"||(LIVE.state==="loading"&&!!LIVE.updatedAt);
 const TRC=new Map();
 function setTr(s,lang,o){s.tr=Object.assign({},s.tr,{[lang]:o});TRC.set(s.id,Object.assign({},TRC.get(s.id),{[lang]:o}))}
@@ -455,10 +474,13 @@ function applyLive(d){
   Object.assign(LIVE,{updatedAt:d.updatedAt,ai:d.ai,sources:d.sources||[],windowDays:d.windowDays||10});
   refreshDerived();
 }
+/* keeps the last list on the device, so the app opens with stories even offline */
+function cacheLive(d){store.set("gt-stories",JSON.stringify({...d,stories:STORIES,cachedAt:new Date().toISOString()}));LIVE.cachedAt=null;updateWidget()}
+function updateWidget(){if(!NATIVE||!STORIES.length)return;const s=ranked().list[0];if(s)GTNative.widget({id:s.id,title:st(s,"title"),source:s.source,url:s.url,lang:LANG,updated:new Date().toISOString()})}
 /* the news server: same address as the app when it serves the page, otherwise the default local port */
-const API_BASES=[...new Set([...(location.protocol.startsWith("http")?[""]:[]),"http://localhost:8787/"])];
+const API_BASES=CFG.apiBase?[CFG.apiBase.replace(/\/?$/,"/")]:APP?[]:[...new Set([...(location.protocol.startsWith("http")?[""]:[]),"http://localhost:8787/"])];
 async function api(path,opts){
-  let last;
+  let last=new Error(t("No news server configured"));
   for(const base of LIVE.base!=null?[LIVE.base,...API_BASES.filter(b=>b!==LIVE.base)]:API_BASES){
     try{const r=await fetch(base+path,opts);if(!r.ok||!/json/.test(r.headers.get("content-type")||""))throw new Error("HTTP "+r.status);const d=await r.json();LIVE.base=base;return d}
     catch(e){last=e}
@@ -470,12 +492,12 @@ async function loadLive(force){
   try{
     const d=await api((force?"api/refresh":"api/stories")+"?lang="+LANG,{method:force?"POST":"GET",headers:{accept:"application/json"}});
     if(!d.stories||!d.stories.length){LIVE.state=was==="live"?"live":"error";LIVE.sources=d.sources||[];LIVE.error=t("No outlet could be reached");render(1);if(force)toast(t("The news server couldn't reach any outlet. Check its window for errors."));return}
-    applyLive(d);LIVE.state="live";LIVE.error="";LIVE.translating=!!(d.translation&&d.translation.translating);LIVE.trAvailable=!d.translation||d.translation.available;LIVE.trDone=d.translation?d.translation.done:0;render(1);
+    applyLive(d);LIVE.state="live";LIVE.error="";LIVE.offline=false;cacheLive(d);LIVE.translating=!!(d.translation&&d.translation.translating);LIVE.trAvailable=!d.translation||d.translation.available;LIVE.trDone=d.translation?d.translation.done:0;render(1);
     if(LIVE.translating){clearTimeout(loadLive.poll);loadLive.poll=setTimeout(()=>loadLive(false),4000)}
     else if(LANG!=="en"&&!LIVE.trAvailable)browserTranslate();
     if(force){const n=STORIES.filter(s=>!before.has(s.id)).length;toast(d.throttled?t("Just updated. Check again in a minute."):n?t("New stories: {0}",n):t("No new stories yet. Good news takes its time."))}
     if(d.refreshing)setTimeout(()=>loadLive(false),20000);
-  }catch(e){LIVE.state=LIVE.updatedAt?"live":"offline";LIVE.error=e.message;render(1);if(force)toast(LIVE.updatedAt?t("Couldn't update. Check your connection."):t("Can't find the news server. Start it, then open http://localhost:8787"))}
+  }catch(e){LIVE.state=LIVE.updatedAt?"live":"offline";LIVE.error=e.message;if(LIVE.updatedAt)LIVE.offline=true;render(1);if(force)toast(LIVE.updatedAt?t("Couldn't update. Check your connection."):APP?t("Couldn't reach the news service. Check your connection."):t("Can't find the news server. Start it, then open http://localhost:8787"))}
 }
 /* fallback when the server has no AI: the browser's built-in, on-device Translator (Chrome and Edge 138+) */
 const BTR={running:false,made:{}};
@@ -494,13 +516,53 @@ async function browserTranslate(){
     setTr(s,lang,o);if(++n%5===0)render(1)}}
   catch(e){}finally{BTR.running=false;render(1)}
 }
+/* ---------- saved on the device ---------- */
+function stateJSON(){return JSON.stringify({v:1,prefs:{cats:[...S.prefs.cats],sources:S.prefs.sources,regions:[...S.prefs.regions],amount:S.prefs.amount},
+  cols:S.cols,read:S.read.slice(-500),like:S.like,hidden:[...S.hidden],muted:[...S.muted],notif:S.notif,lang:LANG,dark:S.dark,onboarded:S.onboarded,name:S.name||"",lock:!!S.lock})}
+let lastSaved="";
+function persistSoon(){clearTimeout(persistSoon.t);persistSoon.t=setTimeout(()=>{const j=stateJSON();if(j!==lastSaved){lastSaved=j;store.set("gt-state",j)}},300)}
+async function loadState(){
+  try{const j=await store.get("gt-state");if(j){const d=JSON.parse(j);lastSaved=j;
+    Object.assign(S.prefs,{cats:new Set(d.prefs.cats),sources:d.prefs.sources,regions:new Set(d.prefs.regions),amount:d.prefs.amount});
+    Object.assign(S,{cols:d.cols,read:d.read,like:d.like||{},hidden:new Set(d.hidden),muted:new Set(d.muted),notif:Object.assign(S.notif,d.notif),dark:d.dark,onboarded:!!d.onboarded,name:d.name||"",lock:!!d.lock});
+    if(d.lang&&I18N.langs[d.lang]){LANG=d.lang;document.documentElement.lang=LANG}
+    if(typeof d.dark==="boolean")document.documentElement.classList.toggle("dark",d.dark)}}catch(e){}
+  try{const j=await store.get("gt-saved");if(j)Object.entries(JSON.parse(j)).forEach(([id,x])=>SAVED.set(id,normalize(x)))}catch(e){}
+  try{const j=await store.get("gt-stories");if(j){const d=JSON.parse(j);if(d.stories&&d.stories.length){applyLive(d);LIVE.state="live";LIVE.cachedAt=d.cachedAt;LIVE.offline=true}}}catch(e){}
+}
+/* full copies of saved stories (and their pictures, in the app) so they open offline */
+async function syncSaved(){
+  const want=new Set(S.cols.flatMap(c=>c.ids));
+  for(const id of want)if(!SAVED.has(id)){const s=byId(id);if(!s)continue;const copy=Object.assign({},s);SAVED.set(id,copy);
+    if(NATIVE&&s.img&&!s.imgLocal)GTNative.cacheImage(id,s.img).then(u=>{if(u){copy.imgLocal=u;store.set("gt-saved",JSON.stringify(Object.fromEntries(SAVED)))}})}
+  for(const id of [...SAVED.keys()])if(!want.has(id)){SAVED.delete(id);if(NATIVE)GTNative.removeImage(id)}
+  store.set("gt-saved",JSON.stringify(Object.fromEntries(SAVED)));
+}
+/* the daily digest reminder, scheduled on the phone itself */
+async function applyNotif(ask){
+  if(!NATIVE)return;
+  if(S.notif.freq!=="Off"&&ask){const p=await GTNative.notifications.permission();if(p!=="granted"&&await GTNative.notifications.request()!=="granted"){toast(t("Notifications are turned off for Good Things in your phone's settings."));return}}
+  const ok=await GTNative.notifications.scheduleDigest({freq:S.notif.freq,time:S.notif.time,title:t("Your daily dose of good news is ready"),body:t("A few calm, sourced stories are waiting when you have a moment.")});
+  if(ok&&ask&&S.notif.freq!=="Off")toast(t("Reminder set: {0} at {1}",t(S.notif.freq),S.notif.time));
+}
+/* optional app lock */
+const BIO={available:false,type:"fingerprint"};
+let locked=false,pausedAt=0;
+function showLock(){locked=true;const l=$("lock");l.innerHTML=`${MARK}<h2>${t("Good Things is locked")}</h2><p class="muted">${t("Unlock with {0} to continue.",t(BIO.type))}</p><button class="btn" data-a="unlock">${t("Unlock")}</button>`;l.classList.add("on")}
+async function unlock(){if(await GTNative.biometric.authenticate(t("Unlock Good Things"))){locked=false;$("lock").classList.remove("on")}}
+async function wipeData(){
+  for(const k of ["gt-state","gt-saved","gt-stories"])await store.remove(k);
+  if(NATIVE){await GTNative.notifications.cancelDigest();for(const id of SAVED.keys())await GTNative.removeImage(id);await GTNative.widget({})}
+  location.reload();
+}
+
 const ago=iso=>{const m=Math.max(0,Math.round((Date.now()-Date.parse(iso))/6e4));return m<1?t("just now"):m<60?t("{0} min ago",m):m<1440?t("{0} h ago",Math.round(m/60)):t("{0} d ago",Math.round(m/1440))};
 const when=s=>s.published?ago(s.published):fmt(s.date);
-const pic=s=>s.img?`<img src="${esc(s.img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">`:"";
+const pic=s=>(s.imgLocal||s.img)?`<img src="${esc(s.imgLocal||s.img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">`:"";
 function liveBar(){
   const n=new Set(STORIES.map(s=>s.source)).size,busy=LIVE.state==="loading";
   const trn=LANG!=="en"&&LIVE.state==="live"&&(LIVE.translating||BTR.running)?STORIES.filter(s=>s.tr&&s.tr[LANG]).length:-1;
-  const msg=busy?t("Checking outlets for new good news…"):trn>-1?t("Translating stories into {0}… {1}/{2}",I18N.langs[LANG],trn,STORIES.length):LIVE.state==="live"?t("Live from {0} outlets · updated {1}",n,ago(LIVE.updatedAt)):LIVE.state==="offline"?t("Sample stories · news server not found"):LIVE.state==="error"?t("Sample stories · live news unavailable right now"):t("Sample stories");
+  const msg=busy?t("Checking outlets for new good news…"):LIVE.offline&&LIVE.updatedAt?t("Offline · stories from {0}",ago(LIVE.updatedAt)):trn>-1?t("Translating stories into {0}… {1}/{2}",I18N.langs[LANG],trn,STORIES.length):LIVE.state==="live"?t("Live from {0} outlets · updated {1}",n,ago(LIVE.updatedAt)):LIVE.state==="offline"?(APP?t("Sample stories · you're offline"):t("Sample stories · news server not found")):LIVE.state==="error"?t("Sample stories · live news unavailable right now"):t("Sample stories");
   return `<div class="livebar"><i class="dot ${busy||trn>-1?"busy":LIVE.state==="live"?"":"off"}"></i><span class="grow">${msg}</span><button data-a="refresh" class="${busy?"spin":""}" ${busy?"disabled":""} aria-label="${t("Refresh")}">${ic("refresh")}${t("Refresh")}</button></div>`;
 }
 const CATS=["Environment & Nature","Science","Health & Medicine","Technology","Animals","World","Humanity & Community","Space","Culture","Education","Sports","Business & Economy","Local Communities","Innovation","Inspiring People","Conservation"];
@@ -525,7 +587,7 @@ const S={screen:"splash",p:{},stack:[],tab:"home",
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt=d=>new Date(d+"T12:00:00Z").toLocaleDateString(LOC[LANG],{day:"numeric",month:"short",year:"numeric"});
-const IC={refresh:"M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5",home:"M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z",search:"M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-3.8-3.8",
+const IC={lock:"M7 11V8a5 5 0 0 1 10 0v3M6 11h12v9H6z",shield:"M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z",refresh:"M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5",home:"M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z",search:"M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-3.8-3.8",
  spark:"M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z",
  bookmark:"M6 4h12v17l-6-4-6 4z",user:"M12 12a4 4 0 1 0 0-8a4 4 0 0 0 0 8zM4 21c1-4 4.5-6 8-6s7 2 8 6",
  share:"M12 15V4M8 8l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7",star:"M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z",
@@ -633,7 +695,8 @@ V.ob3=()=>`<div class="full">${steps(3)}<h1>${t("Choose sources you trust")}</h1
 V.obr=()=>`<div class="full">${steps(4)}<h1>${t("Where should good news come from?")}</h1><p class="lead">${t("Optional. Stories from the countries you pick appear more often. Worldwide stories always stay in.")}</p>${regionPicker()}<div class="spacer"></div><button class="btn" data-a="go" data-to="ob4">${S.prefs.regions.size?t("Continue"):t("Continue with everywhere")}</button></div>`;
 const amounts=()=>[[5,"Quick dose","5 stories a day"],[10,"Balanced","10 stories a day"],["explorer","Explorer","More stories whenever I want"]].map(([v,a,d])=>`<button class="opt" data-a="amount" data-v="${v}" aria-pressed="${String(S.prefs.amount)===String(v)}"><span class="radio"></span><span><b>${t(a)}</b><span class="muted">${t(d)}</span></span></button>`).join("");
 V.ob4=()=>`<div class="full">${steps(5)}<h1>${t("How much news do you want?")}</h1><p class="lead">${t("You can finish your day's stories. Nothing here scrolls forever.")}</p>${amounts()}<div class="spacer"></div><button class="btn" data-a="go" data-to="ob5">${t("Continue")}</button></div>`;
-V.ob5=()=>`<div class="full"><div class="spacer"></div><div style="text-align:center">${MARK}</div><h1 style="text-align:center">${t("Your positive corner of the internet is ready.")}</h1><p class="lead" style="text-align:center">${t("Topics: {0} · Sources: {1} · Regions: {2} · Stories today: {3}",S.prefs.cats.size,S.prefs.sources.length,S.prefs.regions.size||t("Everywhere"),doseSize())}</p><div class="spacer"></div><button class="btn" data-a="tab" data-to="home">${t("Start discovering")}</button></div>`;
+V.ob5=()=>{S.onboarded=true;return V.ob5x()};
+V.ob5x=()=>`<div class="full"><div class="spacer"></div><div style="text-align:center">${MARK}</div><h1 style="text-align:center">${t("Your positive corner of the internet is ready.")}</h1><p class="lead" style="text-align:center">${t("Topics: {0} · Sources: {1} · Regions: {2} · Stories today: {3}",S.prefs.cats.size,S.prefs.sources.length,S.prefs.regions.size||t("Everywhere"),doseSize())}</p><div class="spacer"></div><button class="btn" data-a="tab" data-to="home">${t("Start discovering")}</button></div>`;
 
 V.home=()=>{
   const {list,outside}=ranked(),n=doseSize(),dose=list.slice(0,n),done=dose.filter(s=>S.read.includes(s.id)).length;
@@ -653,7 +716,7 @@ V.home=()=>{
    <button class="btn" data-a="go" data-to="rest">${t("I'm done for now")}</button>${more?`<button class="btn ghost" data-a="more">${t("Show me one more")}</button>`:`<p class="small muted">${isLive()?t("You've seen every story for now. Refresh later for more."):t("You've seen every story in this prototype.")}</p>`}</div>`}
   </div>`;
 };
-V.rest=()=>`<div class="full" style="text-align:center;align-items:center"><div class="spacer"></div>${MARK}<h1>${t("See you tomorrow.")}</h1><p class="lead">${t("Good stories explored today: {0}. In the real app, this is where it would close.",S.read.length)}</p><div class="spacer"></div><button class="btn ghost" data-a="tab" data-to="home">${t("Back to the app")}</button></div>`;
+V.rest=()=>`<div class="full" style="text-align:center;align-items:center"><div class="spacer"></div>${MARK}<h1>${t("See you tomorrow.")}</h1><p class="lead">${APP?t("Good stories explored today: {0}. Enjoy the rest of your day.",S.read.length):t("Good stories explored today: {0}. In the real app, this is where it would close.",S.read.length)}</p><div class="spacer"></div>${NATIVE&&GTNative.platform==="android"?`<button class="btn" data-a="close">${t("Close the app")}</button>`:""}<button class="btn ghost" data-a="tab" data-to="home">${t("Back to the app")}</button></div>`;
 
 V.dose=()=>{
   const dose=doseList(),i=S.p.i||0;
@@ -776,10 +839,24 @@ V.profile=()=>{const r=S.read.map(byId),cnt=cs=>r.filter(s=>cs.includes(s.cat)).
  const dark=document.documentElement.classList.contains("dark");
  const row=(i,a,sub,to)=>`<button class="row" data-a="${to==="lang"?"langSheet":"go"}" data-to="${to}">${ic(i)}<span class="grow"><b>${a}</b><div class="sub">${sub}</div></span>${ic("chev")}</button>`;
  const cats=[...S.prefs.cats].map(c=>t(c));
- return `<div class="pad"><div style="display:flex;gap:14px;align-items:center"><div class="avatar">M</div><div><h1 style="font-size:26px">Maya</h1><div class="muted small">${t("Sample profile · Free plan")}</div></div></div>
- <div><div class="eyebrow" style="margin-bottom:8px">${t("Your month of good news")}</div><div class="grid2"><div class="tile"><span class="n">${r.length}</span><span class="small">${t("positive stories discovered")}</span></div><div class="tile"><span class="n">${sci}</span><span class="small">${t("science and health advances")}</span></div><div class="tile"><span class="n">${env}</span><span class="small">${t("environmental wins")}</span></div><div class="tile"><span class="n">${hum}</span><span class="small">${t("human stories")}</span></div></div><p class="small muted" style="margin-top:8px">${t("Counts what you have opened in this session. No streaks, nothing to keep up.")}</p></div>
- <div class="rows">${row("sliders",t("Favourite topics"),esc(cats.slice(0,3).join(", "))+(cats.length>3?` +${cats.length-3}`:""),"personal")}${row("globe",t("Regions"),regionLine(),"personal")}${row("star",t("My Sources"),t("Followed: {0}",S.prefs.sources.length),"sources")}${row("bookmark",t("Saved stories"),t("Saved: {0} · Collections: {1}",S.cols.reduce((a,c)=>a+c.ids.length,0),S.cols.length),"saved")}${row("clock",t("Reading history"),t("Opened: {0}",r.length),"history")}${row("bell",t("Notifications"),S.notif.freq==="Off"?t("Off"):t(S.notif.freq)+" · "+S.notif.time,"notifs")}${row("globe",t("Language"),I18N.langs[LANG],"lang")}${row("crown",t("Plans"),t("Free and Premium"),"plans")}
- <div class="row">${ic("moon")}<span class="grow"><b>${t("Dark mode")}</b></span><button class="switch" role="switch" aria-checked="${dark}" aria-label="${t("Dark mode")}" data-a="dark"></button></div></div></div>`};
+ return `<div class="pad"><div style="display:flex;gap:14px;align-items:center">${APP?`<button class="avatar" data-a="nameSheet" aria-label="${t("Your name")}">${esc((S.name||t("You")).slice(0,1).toUpperCase())}</button><div><button data-a="nameSheet"><h1 style="font-size:26px">${esc(S.name||t("You"))}</h1></button><div class="muted small">${t("Stored only on this device")}</div></div></div>`:`<div class="avatar">M</div><div><h1 style="font-size:26px">Maya</h1><div class="muted small">${t("Sample profile · Free plan")}</div></div></div>`}
+ <div><div class="eyebrow" style="margin-bottom:8px">${t("Your month of good news")}</div><div class="grid2"><div class="tile"><span class="n">${r.length}</span><span class="small">${t("positive stories discovered")}</span></div><div class="tile"><span class="n">${sci}</span><span class="small">${t("science and health advances")}</span></div><div class="tile"><span class="n">${env}</span><span class="small">${t("environmental wins")}</span></div><div class="tile"><span class="n">${hum}</span><span class="small">${t("human stories")}</span></div></div><p class="small muted" style="margin-top:8px">${APP?t("Counts what you have opened on this device. No streaks, nothing to keep up."):t("Counts what you have opened in this session. No streaks, nothing to keep up.")}</p></div>
+ <div class="rows">${row("sliders",t("Favourite topics"),esc(cats.slice(0,3).join(", "))+(cats.length>3?` +${cats.length-3}`:""),"personal")}${row("globe",t("Regions"),regionLine(),"personal")}${row("star",t("My Sources"),t("Followed: {0}",S.prefs.sources.length),"sources")}${row("bookmark",t("Saved stories"),t("Saved: {0} · Collections: {1}",S.cols.reduce((a,c)=>a+c.ids.length,0),S.cols.length),"saved")}${row("clock",t("Reading history"),t("Opened: {0}",r.length),"history")}${row("bell",t("Notifications"),S.notif.freq==="Off"?t("Off"):t(S.notif.freq)+" · "+S.notif.time,"notifs")}${row("globe",t("Language"),I18N.langs[LANG],"lang")}${APP?"":row("crown",t("Plans"),t("Free and Premium"),"plans")}
+ <div class="row">${ic("moon")}<span class="grow"><b>${t("Dark mode")}</b></span><button class="switch" role="switch" aria-checked="${dark}" aria-label="${t("Dark mode")}" data-a="dark"></button></div>
+ ${BIO.available?`<div class="row">${ic("lock")}<span class="grow"><b>${t("App lock")}</b><div class="sub">${t("Ask for {0} when the app opens",t(BIO.type))}</div></span><button class="switch" role="switch" aria-checked="${!!S.lock}" aria-label="${t("App lock")}" data-a="lockToggle"></button></div>`:""}
+ ${row("shield",t("Privacy"),t("What the app stores and sends"),"privacy")}</div></div>`};
+V.privacy=()=>bar(t("Privacy"))+`<div class="pad" style="padding-top:8px">
+ <p class="lead">${t("Good Things has no accounts, no ads and no tracking.")}</p>
+ <div class="rows">${[
+  ["user",t("On your device only"),t("Your topics, sources, saved stories, reading history, name and settings are stored on this device. They are never sent to us.")],
+  ["globe",t("When stories load"),t("The app asks our news service for the latest stories in your language. Like any website, the service sees your IP address for that request. It does not keep a profile of you.")],
+  ["shield",t("Translation"),t("Story texts (not your data) are sent to Google Translate to translate them.")],
+  ["bell",t("Reminders"),t("Daily reminders are scheduled on your phone. No push service is involved.")],
+  ["lock",t("App lock"),t("Face ID, Touch ID or fingerprint checks happen in your phone's operating system. The app never sees them.")],
+  ["ext",t("Articles"),t("Story pictures load from the publisher's website, and original articles open there. Publishers have their own privacy policies.")]
+ ].map(([i,a,b])=>`<div class="row" style="align-items:flex-start">${ic(i)}<span class="grow"><b>${a}</b><div class="sub">${b}</div></span></div>`).join("")}</div>
+ ${CFG.privacyUrl?`<a class="btn ghost" href="${esc(CFG.privacyUrl)}" target="_blank" rel="noopener">${t("Read the full privacy policy")} ${ic("ext")}</a>`:""}
+ <button class="btn ghost" data-a="wipe">${t("Delete my data")}</button></div>`;
 V.history=()=>bar(t("Reading history"))+`<div class="pad" style="padding-top:8px">${S.read.slice().reverse().map(id=>mini(byId(id))).join("")||empty(t("Stories you open will appear here."))}</div>`;
 V.personal=()=>bar(t("Personalisation"))+`<div class="pad" style="padding-top:8px"><div class="eyebrow">${t("Topics you want more of")}</div><div class="chips">${CATS.map(c=>`<button class="chip" data-a="cat" data-c="${esc(c)}" aria-pressed="${S.prefs.cats.has(c)}">${esc(t(c))}</button>`).join("")}</div>
  <p class="small muted">${t("Your topics appear more often. About one story in five comes from outside them, so the feed doesn't narrow.")}</p>
@@ -789,7 +866,7 @@ V.personal=()=>bar(t("Personalisation"))+`<div class="pad" style="padding-top:8p
  <div class="rows"><button class="row" data-a="go" data-to="sources">${ic("star")}<span class="grow"><b>${t("My Sources")}</b><div class="sub">${t("Followed: {0} · Hidden: {1}",S.prefs.sources.length,S.hidden.size)}</div></span>${ic("chev")}</button></div></div>`;
 V.notifs=()=>{const n=S.notif,seg=(k,opts)=>`<div class="seg">${opts.map(o=>`<button data-a="notif" data-k="${k}" data-v="${o}" aria-pressed="${n[k]===o}">${t(o)}</button>`).join("")}</div>`;
  const d=doseList().slice(0,3).map(s=>st(s,"title"));
- return bar(t("Notifications"))+`<div class="pad" style="padding-top:8px"><p class="muted">${t("At most one a day. No alerts about what you're missing.")}</p>
+ return bar(t("Notifications"))+`<div class="pad" style="padding-top:8px"><p class="muted">${t("At most one a day. No alerts about what you're missing.")}</p>${NATIVE?"":`<p class="small muted">${t("Reminders are delivered by the mobile app. Here you can see how they work.")}</p>`}
  <div class="eyebrow">${t("How often")}</div>${seg("freq",["Daily","Weekdays","Weekly","Off"])}
  ${n.freq==="Off"?`<p class="muted small">${t("Notifications are off. The stories will be here when you open the app.")}</p>`:`<div class="eyebrow">${t("When")}</div><input type="time" id="ntime" data-c="ntime" value="${n.time}" aria-label="${t("Notification time")}">
  <div class="eyebrow">${t("Which stories")}</div>${seg("scope",["My topics","Everything"])}
@@ -803,6 +880,7 @@ V.plans=()=>bar(t("Plans"))+`<div class="pad" style="padding-top:8px"><div class
 const TABS={home:["home","Home"],discover:["search","Discover"],good:["spark","Good News"],saved:["bookmark","Saved"],profile:["user","Profile"]};
 const NONAV=["splash","ob1","ob2","ob3","obr","ob4","ob5","rest","dose"];
 function render(keep){
+  persistSoon();
   const sc=$("screen"),y=sc.scrollTop;sc.innerHTML=V[S.screen]();sc.scrollTop=keep?y:0;
   const nav=$("nav");nav.hidden=NONAV.includes(S.screen);
   nav.innerHTML=Object.entries(TABS).map(([k,[i,l]])=>k==="good"?`<button class="center" data-a="good" aria-label="${t("Give me something good")}"><span class="orb">${ic(i)}</span>${t(l)}</button>`:`<button data-a="tab" data-to="${k}" ${S.tab===k&&!nav.hidden?'aria-current="page"':""}>${ic(i)}${t(l)}</button>`).join("");
@@ -824,9 +902,9 @@ const A={
   back:()=>{const x=S.stack.pop();if(x){S.screen=x.screen;S.p=x.p}else{S.screen=S.tab;S.p={}}render()},
   open:d=>go("article",{id:d.id}),
   good:()=>{const pool=STORIES.filter(s=>!S.hidden.has(s.source)&&s.id!==S.lastGood);const s=pool[Math.floor(Math.random()*pool.length)];S.lastGood=s.id;go("article",{id:s.id,good:1},S.screen!=="article"||!S.p.good)},
-  save:d=>{const c=S.cols[0].ids,i=c.indexOf(d.id);if(i>-1){c.splice(i,1);toast(t("Removed from Saved"))}else{c.push(d.id);toast(t("Saved"))}render(1)},
+  save:d=>{const c=S.cols[0].ids,i=c.indexOf(d.id);if(i>-1){c.splice(i,1);toast(t("Removed from Saved"))}else{c.push(d.id);toast(t("Saved"))}syncSaved();render(1)},
   collect:d=>colSheet(d.id),
-  colToggle:d=>{const c=S.cols[+d.i].ids,i=c.indexOf(d.id);i>-1?c.splice(i,1):c.push(d.id);render(1);colSheet(d.id)},
+  colToggle:d=>{const c=S.cols[+d.i].ids,i=c.indexOf(d.id);i>-1?c.splice(i,1):c.push(d.id);syncSaved();render(1);colSheet(d.id)},
   col:d=>{S.p={col:+d.i};render(1)},
   newcolSheet:()=>sheet(`<h3>${t("New collection")}</h3><form class="searchbar" data-form="newcol"><input type="text" id="newcol" placeholder="${t("For example, Inspiring stories")}" aria-label="${t("New collection name")}"><button aria-label="${t("Create")}">${ic("plus")}</button></form><button class="btn ghost" data-a="closeSheet">${t("Cancel")}</button>`),
   closeSheet,
@@ -837,7 +915,10 @@ const A={
   unhide:d=>{S.hidden.delete(d.src);render(1)},
   like:d=>{const v=+d.d;S.like[d.c]=S.like[d.c]===v?0:v;toast(S.like[d.c]>0?t("You'll see a little more like this"):S.like[d.c]<0?t("You'll see a little less like this"):t("Preference cleared"));render(1)},
   mute:d=>{if(S.muted.has(d.c)){S.muted.delete(d.c);toast(t("Back to normal for {0}",t(d.c)))}else{S.muted.add(d.c);toast(t("Fewer stories about {0}",t(d.c)))}render(1)},
-  share:d=>{const s=byId(d.id),fb=t("Share: {0} article link",s.source);try{navigator.clipboard.writeText(s.url).then(()=>toast(t("Link to the original article copied")),()=>toast(fb))}catch(e){toast(fb)}},
+  share:async d=>{const s=byId(d.id),title=st(s,"title"),text=st(s,"sum"),fb=t("Share: {0} article link",s.source);
+    if(NATIVE&&await GTNative.share({title,text,url:s.url}))return;
+    if(navigator.share){try{await navigator.share({title,text,url:s.url});return}catch(e){if(e&&e.name==="AbortError")return}}
+    try{navigator.clipboard.writeText(s.url).then(()=>toast(t("Link to the original article copied")),()=>toast(fb))}catch(e){toast(fb)}},
   cat:d=>{const c=S.prefs.cats;c.has(d.c)?c.delete(d.c):c.add(d.c);render(1)},
   region:d=>{const r=S.prefs.regions;r.has(d.c)?r.delete(d.c):r.add(d.c);render(1)},
   regionAll:d=>{const r=S.prefs.regions,cs=REGIONS[d.r],all=cs.every(c=>r.has(c));cs.forEach(c=>all?r.delete(c):r.add(c));render(1)},
@@ -849,8 +930,16 @@ const A={
   pin:d=>{S.p={c:d.c};render(1)},
   wk:d=>{S.p={g:S.p.g===+d.g?null:+d.g};render(1)},
   srcMove:d=>{const f=S.prefs.sources,i=+d.i,j=i+ +d.d;if(j<0||j>=f.length)return;[f[i],f[j]]=[f[j],f[i]];render(1)},
-  notif:d=>{S.notif[d.k]=d.v;render(1)},
-  dark:()=>{document.documentElement.classList.toggle("dark");render(1)},
+  notif:d=>{S.notif[d.k]=d.v;render(1);applyNotif(true)},
+  dark:()=>{const on=document.documentElement.classList.toggle("dark");S.dark=on;if(NATIVE)GTNative.statusBar(on);render(1)},
+  lockToggle:async()=>{if(S.lock){S.lock=false;render(1);return}
+    const ok=await GTNative.biometric.authenticate(t("Turn on the app lock"));if(ok){S.lock=true;toast(t("App lock on"))}render(1)},
+  unlock:()=>unlock(),
+  privacy:()=>go("privacy"),
+  nameSheet:()=>sheet(`<h3>${t("Your name")}</h3><p class="small muted">${t("Shown only on this device.")}</p><form class="searchbar" data-form="name"><input type="text" maxlength="40" value="${esc(S.name||"")}" aria-label="${t("Your name")}"><button aria-label="${t("Save")}">${ic("check")}</button></form><button class="btn ghost" data-a="closeSheet">${t("Cancel")}</button>`),
+  wipe:()=>sheet(`<h3>${t("Delete my data?")}</h3><p class="small muted">${t("Removes your preferences, saved stories, reading history and reminders from this device. This can't be undone.")}</p><button class="btn" data-a="wipeYes">${t("Delete my data")}</button><button class="btn ghost" data-a="closeSheet">${t("Cancel")}</button>`),
+  wipeYes:()=>wipeData(),
+  close:()=>{if(NATIVE)GTNative.minimize();A.tab({to:"home"})},
   toast:d=>toast(d.t),
   refresh:()=>loadLive(true),
   ask:d=>{const r=ask(d.q);S.chat=(S.chat||[]).concat({me:d.q},r);render(1);const sc=$("screen");sc.scrollTop=sc.scrollHeight},
@@ -865,13 +954,15 @@ const A={
 };
 const GUIDE=[["splash","Splash"],["ob1","Onboarding"],["ob2","Topic selection"],["ob3","Source selection"],["obr","Region selection"],["home","Home feed"],["dose","Daily Dose"],["article","Article + AI summary"],["good","Something good"],["discover","Discover"],["category","Category feed"],["search","Search"],["moodfeed","Mood discovery"],["map","Good News Map"],["sources","My Sources"],["saved","Saved stories"],["weekly","Weekly Perspective"],["assistant","AI assistant"],["profile","Profile"],["personal","Personalisation"],["notifs","Notifications"],["plans","Plans"],["lang","Language"],["dark","Toggle dark mode"]];
 
-function init(){
+async function init(){
   const root=document.documentElement,th=root.getAttribute("data-theme");
   if(th==="dark"||(!th&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches))root.classList.add("dark");
   const nl=((typeof navigator!=="undefined"&&navigator.language)||"en").slice(0,2).toLowerCase();if(I18N.langs[nl]){LANG=nl;root.lang=nl}
+  await loadState();
   renderGuide();
   document.addEventListener("click",e=>{
     if(e.target.id==="sheet"){closeSheet();return}
+    const ext=NATIVE&&e.target.closest('a[target="_blank"]');if(ext){e.preventDefault();GTNative.openUrl(ext.href);return}
     const el=e.target.closest("[data-a]");if(!el||el.disabled)return;
     const f=A[el.dataset.a];if(f)f(el.dataset);
   });
@@ -879,12 +970,27 @@ function init(){
   document.addEventListener("submit",e=>{e.preventDefault();const f=e.target.dataset.form;
     if(f==="ask"){const i=e.target.querySelector("input"),q=i.value.trim();if(q)A.ask({q});return}
     if(f==="search"){const q=e.target.querySelector("input").value.trim();if(q)go("search",{q},S.screen!=="search")}
+    if(f==="name"){S.name=e.target.querySelector("input").value.trim();closeSheet();render(1);return}
     if(f==="newcol"){const v=e.target.querySelector("input").value.trim();if(!v)return;S.cols.push({name:v,ids:e.target.dataset.id?[e.target.dataset.id]:[]});toast(t("Collection created"));closeSheet();render(1)}
   });
-  document.addEventListener("change",e=>{if(e.target.dataset&&e.target.dataset.c==="ntime"){S.notif.time=e.target.value||S.notif.time;render(1)}});
+  document.addEventListener("change",e=>{if(e.target.dataset&&e.target.dataset.c==="ntime"){S.notif.time=e.target.value||S.notif.time;render(1);applyNotif(false)}});
+  addEventListener("online",()=>{LIVE.offline=false;loadLive(false)});
+  addEventListener("offline",()=>{LIVE.offline=true;render(1)});
+  if(NATIVE){
+    const b=await GTNative.biometric.available();if(b){BIO.available=b.available;BIO.type=b.type}
+    GTNative.statusBar(document.documentElement.classList.contains("dark"));
+    GTNative.onBack(()=>{if($("sheet").classList.contains("open"))closeSheet();else if(S.stack.length)A.back();else if(S.tab!=="home"||S.screen!==S.tab)A.tab({to:"home"});else GTNative.minimize()});
+    GTNative.onPause(()=>{pausedAt=Date.now()});
+    GTNative.onResume(()=>{if(S.lock&&BIO.available&&Date.now()-pausedAt>60000){showLock();unlock()}if(Date.now()-Date.parse(LIVE.updatedAt||0)>30*6e4)loadLive(false)});
+    GTNative.network.onChange(on=>{LIVE.offline=!on;if(on)loadLive(false);else render(1)});
+    GTNative.notifications.onOpen(to=>{if(to==="dose"&&S.onboarded){S.stack=[];S.tab="home";go("dose",{},false)}});
+  }
+  if(APP&&!lastSaved)S.notif.freq="Off";              // reminders are opt-in in the app
+  if(APP){S.screen=S.onboarded?"home":"ob1";S.tab="home"}  // the native splash screen replaces the web one
   render();
+  if(NATIVE){GTNative.hideSplash();if(S.lock&&BIO.available){showLock();unlock()}}
   loadLive(false);
-  setTimeout(()=>{if(S.screen==="splash")go("ob1",{},false)},2200);
+  if(!APP)setTimeout(()=>{if(S.screen==="splash")go(S.onboarded?"home":"ob1",{},false)},2200);
 }
 init();
 })();

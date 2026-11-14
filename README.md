@@ -52,6 +52,31 @@ You don't need a second window for the app: the news server already serves it at
 
 If you open `index.html` directly, or serve the folder with another static server, the app looks for the news server at http://localhost:8787. If the news server is running, live news and Refresh work as usual. If it isn't, the app shows the bundled sample stories and the home screen says "news server not found".
 
+## Mobile app (Android and iOS)
+
+The repository is also a [Capacitor](https://capacitorjs.com) project. The app's files are bundled inside the Android and iOS apps, which add native features:
+
+- reminders for the daily digest;
+- the system share sheet;
+- offline reading;
+- an optional Face ID or fingerprint lock;
+- a home-screen widget.
+
+Settings and saved stories are kept on the phone.
+
+    npm install
+    GOOD_THINGS_API_URL=https://your-news-server.example npm run sync
+    npm run android      # opens Android Studio
+    npm run ios          # opens Xcode (on a Mac)
+
+The app needs the news server hosted over HTTPS; `render.yaml` sets it up on Render. [docs/STORE-RELEASE.md](docs/STORE-RELEASE.md) covers the rest:
+
+- signing the builds;
+- the iOS widget;
+- the privacy policy (`privacy.html`, also served at `/privacy.html`);
+- the answers for Apple's App Privacy and Google's Data safety forms;
+- what store review will look at.
+
 ## Settings
 
 | Variable | Default | What it does |
@@ -113,6 +138,11 @@ What the server never does:
 ## Files
 
 - `index.html`: styles, markup and the app script.
+- `privacy.html`: the privacy policy, bundled in the app and served by the news server.
+- `src/native.js`: the bridge to the phone (storage, share, reminders, app lock, widget, offline pictures), bundled into the mobile app.
+- `scripts/build-web.mjs`: builds `www/`, the folder bundled into the mobile app.
+- `capacitor.config.json`, `android/`, `ios/`, `assets/`: the Capacitor project, native projects and icon sources.
+- `render.yaml`: hosting the news server on Render.
 - `i18n.js`: translations (Polish, German, Spanish) for the interface and the sample stories. English lives in `index.html`.
 - `server/server.mjs`: the HTTP server. It serves the app, `GET /api/stories` and `POST /api/refresh`.
 - `server/news.mjs`: collects the feeds, filters, reviews, groups and caches stories.
@@ -140,5 +170,6 @@ What the server never does:
 - **Google translation may be refused:** the free Google endpoint is unofficial and can stop answering for a while. A public release would need the paid Google Cloud Translation API or another service.
 - **Unreviewed translations:** the interface translations were written by AI and haven't been checked by native speakers.
 - **Images:** pictures are loaded straight from the publishers' feeds. A public release needs image rights and the outlets' terms of use checked.
-- **No database:** saved stories and preferences are kept in memory only.
+- **Settings on one device only:** settings and saved stories are kept on each device (in the app, or in the browser's local storage). There are no accounts, so nothing syncs between devices.
+- **Native builds not compiled yet:** the Android and iOS projects were generated and synced, but not compiled in the build environment, which has neither the Android SDK nor Xcode. The first build in Android Studio and Xcode may need small fixes.
 - **Assistant:** it matches keywords in place of a language model.

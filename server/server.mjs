@@ -16,7 +16,7 @@ const APP_DIR = path.resolve(here, "..");
 const PORT = +(process.env.PORT || 8787);
 const REFRESH_MINUTES = +(process.env.GOOD_THINGS_REFRESH_MINUTES || 30);
 const MIN_REFRESH_SECONDS = +(process.env.GOOD_THINGS_MIN_REFRESH_SECONDS || 60);
-const STATIC = { "/": ["index.html", "text/html; charset=utf-8"], "/index.html": ["index.html", "text/html; charset=utf-8"], "/i18n.js": ["i18n.js", "text/javascript; charset=utf-8"] };
+const STATIC = { "/": ["index.html", "text/html; charset=utf-8"], "/index.html": ["index.html", "text/html; charset=utf-8"], "/i18n.js": ["i18n.js", "text/javascript; charset=utf-8"], "/privacy.html": ["privacy.html", "text/html; charset=utf-8"] };
 
 let data = await loadCache();
 let running = null;
