@@ -28,7 +28,15 @@ To turn it on:
     export ANTHROPIC_API_KEY=your-key
     npm start
 
-Only links the model hasn't seen before are sent, so a refresh with no new stories costs nothing. The default model is `claude-opus-5-5` at low effort; set `GOOD_THINGS_MODEL` to use another.
+It also translates live stories into Polish, German and Spanish. When a reader picks one of those languages, the server translates the headline, card summary and article text in the background. The app shows progress on the home screen. Each story is translated once per language and kept in the cache, and new stories are translated ahead of time for languages people have used.
+
+Only stories the model hasn't seen before are sent, so a refresh with no new stories costs nothing. The default model is `claude-opus-5-5` at low effort; set `GOOD_THINGS_MODEL` to use another.
+
+### Translation without an API key
+
+Without AI on the server, the app uses the browser's built-in translator when there is one: Chrome and Edge 138 or newer, on a computer. Translation then happens on the reader's device, and the article says so. Chrome may download the language pack the first time.
+
+In other browsers, live stories stay in English with a note explaining why. The interface and the sample stories are always translated.
 
 ### Other ways to open the app
 
@@ -74,7 +82,8 @@ What the server never does:
 - `server/news.mjs`: collects the feeds, filters, reviews, groups and caches stories.
 - `server/lib.mjs`: feed parsing (RSS and Atom), the keyword filter, the topic and country guesses, and duplicate grouping.
 - `server/classify.mjs`: the optional Claude review.
-- `server/test/`: tests that use made-up test feeds. Run them with `npm test` in `server/`.
+- `server/translate.mjs`: the optional Claude translation, cached per story and language.
+- `server/test/`: tests that use made-up test feeds and a fake translator. Run them with `npm test` in `server/`.
 
 ## How the script in index.html is organised
 
@@ -91,7 +100,8 @@ What the server never does:
 
 - **Not run against real feeds yet.** The feed reader was tested with made-up test feeds only. Real feeds can differ, so watch the server log on first run.
 - **Keyword filter:** without AI review, the filter can let through a story that isn't really positive, and can drop one that is.
-- **English only:** live stories are not translated. In Polish, German and Spanish, the app says the story is shown as published.
+- **Translation needs AI or a capable browser:** without either, live stories stay in English.
+- **Unreviewed translations:** the interface translations were written by AI and haven't been checked by native speakers.
 - **Images:** pictures are loaded straight from the publishers' feeds. A public release needs image rights and the outlets' terms of use checked.
 - **No database:** saved stories and preferences are kept in memory only.
 - **Assistant:** it matches keywords in place of a language model.
