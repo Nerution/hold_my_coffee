@@ -28,15 +28,23 @@ To turn it on:
     export ANTHROPIC_API_KEY=your-key
     npm start
 
-It also translates live stories into Polish, German and Spanish. When a reader picks one of those languages, the server translates the headline, card summary and article text in the background. The app shows progress on the home screen. Each story is translated once per language and kept in the cache, and new stories are translated ahead of time for languages people have used.
-
 Only stories the model hasn't seen before are sent, so a refresh with no new stories costs nothing. The default model is `claude-opus-5-5` at low effort; set `GOOD_THINGS_MODEL` to use another.
 
-### Translation without an API key
+### Translation
 
-Without AI on the server, the app uses the browser's built-in translator when there is one: Chrome and Edge 138 or newer, on a computer. Translation then happens on the reader's device, and the article says so. Chrome may download the language pack the first time.
+Live stories arrive in English. When a reader picks Polish, German or Spanish:
 
-In other browsers, live stories stay in English with a note explaining why. The interface and the sample stories are always translated.
+- **What happens:** the server translates the headline, the card summary and the article text in the background, and the home screen shows progress.
+- **Once per story:** each story is translated once per language and kept in the cache.
+- **Ahead of time:** new stories are translated in advance for languages people have used.
+
+`GOOD_THINGS_TRANSLATOR` chooses how:
+
+- `google` (default) uses Google Translate's free web endpoint: no API key, no tokens. It is an unofficial endpoint, so Google can refuse requests when there are a lot of them. The server then pauses Google translation for 30 minutes.
+- `claude` uses Claude (needs `ANTHROPIC_API_KEY`). The translations are more natural, but they cost tokens.
+- `off` turns server translation off.
+
+When the server can't translate, the app uses the browser's built-in translator if there is one (Chrome and Edge 138 or newer, on a computer). If not, the story stays in English with a note. Each article says how it was translated. The interface and the sample stories are always translated.
 
 ### Other ways to open the app
 
@@ -56,6 +64,7 @@ If you open `index.html` directly, or serve the folder with another static serve
 | `GOOD_THINGS_MIN_REFRESH_SECONDS` | `60` | Shortest gap between refreshes asked for from the app |
 | `GOOD_THINGS_MAX_AGE_DAYS` | `10` | Ignore stories older than this |
 | `GOOD_THINGS_MAX_STORIES` | `120` | Most stories kept at once |
+| `GOOD_THINGS_TRANSLATOR` | `google` | `google`, `claude` or `off` |
 | `GOOD_THINGS_FEEDS` | built-in list | Path to a JSON file with your own feed list |
 | `GOOD_THINGS_CACHE` | `server/data/cache.json` | Where the last result is stored |
 
@@ -82,7 +91,7 @@ What the server never does:
 - `server/news.mjs`: collects the feeds, filters, reviews, groups and caches stories.
 - `server/lib.mjs`: feed parsing (RSS and Atom), the keyword filter, the topic and country guesses, and duplicate grouping.
 - `server/classify.mjs`: the optional Claude review.
-- `server/translate.mjs`: the optional Claude translation, cached per story and language.
+- `server/translate.mjs`: translation with Google Translate or Claude, cached per story and language.
 - `server/test/`: tests that use made-up test feeds and a fake translator. Run them with `npm test` in `server/`.
 
 ## How the script in index.html is organised
@@ -100,7 +109,7 @@ What the server never does:
 
 - **Not run against real feeds yet.** The feed reader was tested with made-up test feeds only. Real feeds can differ, so watch the server log on first run.
 - **Keyword filter:** without AI review, the filter can let through a story that isn't really positive, and can drop one that is.
-- **Translation needs AI or a capable browser:** without either, live stories stay in English.
+- **Google translation may be refused:** the free Google endpoint is unofficial and can stop answering for a while. A public release would need the paid Google Cloud Translation API or another service.
 - **Unreviewed translations:** the interface translations were written by AI and haven't been checked by native speakers.
 - **Images:** pictures are loaded straight from the publishers' feeds. A public release needs image rights and the outlets' terms of use checked.
 - **No database:** saved stories and preferences are kept in memory only.

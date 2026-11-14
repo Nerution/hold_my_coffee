@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { collect, loadCache, saveCache } from "./news.mjs";
 import { aiEnabled, MODEL } from "./classify.mjs";
-import { createTranslator, LANGS } from "./translate.mjs";
+import { createTranslator, LANGS, PROVIDER } from "./translate.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const APP_DIR = path.resolve(here, "..");
@@ -50,7 +50,7 @@ function publicView(d, lang, extra = {}) {
     if (!wantedLangs.has(lang)) { wantedLangs.add(lang); data.langs = [...wantedLangs]; }
     translations.ensure(stories, lang);
     stories = translations.attach(stories, lang);
-    translation = { lang, available: aiEnabled(), translating: translations.pending(lang), done: stories.filter(s => s.tr).length, total: stories.length };
+    translation = { lang, available: translations.available(), provider: PROVIDER, translating: translations.pending(lang), done: stories.filter(s => s.tr).length, total: stories.length };
   }
   return { updatedAt: d.updatedAt, ai: d.ai, windowDays: d.windowDays, sources: d.sources.map(({ source, ok, candidates, error }) => ({ source, ok, candidates, error })), stories, translation, ...extra };
 }
@@ -88,8 +88,9 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`Good Things running at http://localhost:${PORT}`);
   console.log(aiEnabled()
-    ? `AI review and translation on (${MODEL}). Only stories not seen before are sent to the model.`
-    : "AI review off: set ANTHROPIC_API_KEY to turn on AI filtering, summaries and translation into " + Object.values(LANGS).join(", ") + ". Using the heuristic filter.");
+    ? `AI review on (${MODEL}). Only stories not seen before are sent to the model.`
+    : "AI review off: set ANTHROPIC_API_KEY to turn on AI filtering and summaries. Using the heuristic filter.");
+  console.log(PROVIDER === "off" ? "Server translation off." : PROVIDER === "claude" ? (aiEnabled() ? `Translation into ${Object.values(LANGS).join(", ")} by ${MODEL}.` : "Translation set to Claude, but ANTHROPIC_API_KEY is missing.") : `Translation into ${Object.values(LANGS).join(", ")} by Google Translate (free, no API key).`);
   if (!data || age() > REFRESH_MINUTES * 60) refresh("startup");
 });
 setInterval(() => refresh("scheduled"), REFRESH_MINUTES * 60 * 1000).unref();

@@ -1,6 +1,8 @@
 /* Translations. Each UI row is [English key, Polish, German, Spanish]. Story rows are [title, card summary, what happened, why it matters, bigger picture, search keywords]. */
 (function(){
 const R=[
+["Machine-translated by Google Translate from the publisher's English text.","Przetłumaczone automatycznie przez Tłumacza Google z angielskiego tekstu wydawcy.","Maschinell von Google Übersetzer aus dem englischen Text des Verlags übersetzt.","Traducido automáticamente por el Traductor de Google a partir del texto en inglés del medio."],
+["Shown in English, as published. Translation isn't available right now. Try again later.","Po angielsku, tak jak opublikowano. Tłumaczenie jest teraz niedostępne. Spróbuj później.","Auf Englisch, wie veröffentlicht. Die Übersetzung ist gerade nicht verfügbar. Versuch es später noch einmal.","En inglés, tal como se publicó. La traducción no está disponible ahora. Inténtalo más tarde."],
 ["Onboarding","Wprowadzenie","Einführung","Bienvenida"],
 ["Topic selection","Wybór tematów","Themenauswahl","Selección de temas"],
 ["Source selection","Wybór źródeł","Quellenauswahl","Selección de fuentes"],

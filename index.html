@@ -591,9 +591,9 @@ function trNote(s){
   if(LANG==="en")return "";
   if(!s.live)return t("Translated by AI. The original article is in English.");
   const x=s.tr&&s.tr[LANG];
-  if(x)return x.by==="browser"?t("Translated on this device by your browser from the publisher's English text."):t("Translated by AI from the publisher's English text.");
+  if(x)return x.by==="browser"?t("Translated on this device by your browser from the publisher's English text."):x.by==="google"?t("Machine-translated by Google Translate from the publisher's English text."):t("Translated by AI from the publisher's English text.");
   if(LIVE.translating||BTR.running)return t("Translation in progress. Shown in English for now.");
-  return t("Shown in English, as published. Translation needs AI on the news server, or a browser with built-in translation.");
+  return t("Shown in English, as published. Translation isn't available right now. Try again later.");
 }
 
 /* ---------- components ---------- */

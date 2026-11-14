@@ -1,6 +1,9 @@
-// Translation of live stories into the app's other languages, with Claude.
-// Each story is translated once per language and kept in the cache, so the
-// model only sees stories it hasn't translated before.
+// Translation of live stories into the app's other languages.
+// GOOD_THINGS_TRANSLATOR picks how:
+//   "google" (default)  Google Translate's free web endpoint. No API key, no tokens.
+//   "claude"            Claude, if ANTHROPIC_API_KEY is set. Better with headlines, costs tokens.
+//   "off"               No server translation (the app may still use the browser's own translator).
+// Each story is translated once per language and kept in the cache.
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod/v4";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
@@ -8,6 +11,7 @@ import { MODEL, aiEnabled } from "./classify.mjs";
 
 export const LANGS = { pl: "Polish", de: "German", es: "Spanish" };
 export const FIELDS = ["title", "sum", "what", "why", "bigger", "excerpt"];
+export const PROVIDER = (process.env.GOOD_THINGS_TRANSLATOR || "google").toLowerCase();
 const BATCH = 8, PARALLEL = 4;
 
 const Item = z.object({
@@ -54,15 +58,67 @@ export async function translateWithAI(stories, lang, log = console) {
   return result;
 }
 
+/* ---------- Google Translate (free web endpoint) ---------- */
+
+const GOOGLE = process.env.GOOD_THINGS_GOOGLE_URL || "https://translate.googleapis.com/translate_a/single"; // overridable for tests
+const SEP = "\n\n";
+export class GoogleBlocked extends Error {}
+let googleBlockedUntil = 0;
+export const googleAvailable = () => Date.now() >= googleBlockedUntil;
+
+/** Translates one text; the endpoint returns [[["translated", "original", ...], ...], ...]. */
+export async function googleTranslateText(text, lang, fetchImpl = fetch) {
+  if (!text.trim()) return "";
+  const url = `${GOOGLE}?client=gtx&sl=en&tl=${lang}&dt=t&q=${encodeURIComponent(text)}`;
+  const res = await fetchImpl(url, { signal: AbortSignal.timeout(10000), headers: { "user-agent": "Mozilla/5.0 (GoodThingsNewsReader)" } });
+  const body = await res.text();
+  if (res.status === 429 || res.status === 403 || /google\.com\/sorry|<html/i.test(body.slice(0, 400))) throw new GoogleBlocked(`Google Translate refused the request (HTTP ${res.status})`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = JSON.parse(body);
+  if (!Array.isArray(data?.[0])) throw new Error("unexpected response");
+  return data[0].map(seg => (Array.isArray(seg) && typeof seg[0] === "string" ? seg[0] : "")).join("");
+}
+
+/** Translates stories with Google: one request per story (fields joined by blank lines), per field if that doesn't split cleanly. */
+export async function translateWithGoogle(stories, lang, log = console, fetchImpl = fetch) {
+  const result = new Map();
+  let blocked = false;
+  await pool(stories.map(s => async () => {
+    if (blocked) return;
+    const fields = FIELDS.filter(f => s[f] && s[f].trim());
+    try {
+      const joined = await googleTranslateText(fields.map(f => s[f].replace(/\s*\n\s*/g, " ")).join(SEP), lang, fetchImpl);
+      let parts = joined.split(/\n\s*\n/).map(x => x.trim());
+      if (parts.length !== fields.length) parts = await Promise.all(fields.map(f => googleTranslateText(s[f], lang, fetchImpl)));
+      const out = { id: s.id, by: "google", kw: "" };
+      for (const f of FIELDS) out[f] = "";
+      fields.forEach((f, i) => { out[f] = parts[i]; });
+      if (out.title) result.set(s.id, out);
+    } catch (err) {
+      if (err instanceof GoogleBlocked) {
+        blocked = true;
+        googleBlockedUntil = Date.now() + 30 * 60 * 1000;
+        log.warn(`${err.message}. Pausing Google translation for 30 minutes; the app will use the browser's translator if it has one.`);
+      } else log.warn(`Google translation (${lang}) failed for one story: ${err.message}`);
+    }
+  }), 3);
+  return result;
+}
+
+/** The translator chosen by GOOD_THINGS_TRANSLATOR, and whether it can run right now. */
+export const providerTranslate = (stories, lang, log) => (PROVIDER === "claude" ? translateWithAI(stories, lang, log) : translateWithGoogle(stories, lang, log));
+export const providerEnabled = () => (PROVIDER === "claude" ? aiEnabled() : PROVIDER === "google" ? googleAvailable() : false);
+
 /**
  * Keeps translations per language and translates missing stories in the background.
  * `store` is the persisted object {pl: {id: {...}}, de: {...}}.
  */
-export function createTranslator({ store = {}, translate = translateWithAI, enabled = aiEnabled, onUpdate = () => {}, log = console } = {}) {
+export function createTranslator({ store = {}, translate = providerTranslate, enabled = providerEnabled, onUpdate = () => {}, log = console } = {}) {
   const running = new Map();
   return {
     store,
     supported: lang => Object.hasOwn(LANGS, lang),
+    available: () => enabled(),
     pending: lang => running.has(lang),
     /** Starts translating whatever is missing for `lang`. Returns the running job, or null if nothing to do. */
     ensure(stories, lang) {
