@@ -6,9 +6,12 @@
   "description": "Fetches news feeds, keeps the positive and constructive stories, and serves them to the Good Things app.",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "check-feeds": "node check-feeds.mjs"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
     "fast-xml-parser": "^5.12.1",

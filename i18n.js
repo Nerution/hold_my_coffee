@@ -1,6 +1,7 @@
 /* Translations. Each UI row is [English key, Polish, German, Spanish]. Story rows are [title, card summary, what happened, why it matters, bigger picture, search keywords]. */
 (function(){
 const R=[
+["This story was found through a news search, which shares only the headline. Read the full story at {0}.","Tę historię znaleziono przez wyszukiwarkę wiadomości, która podaje tylko nagłówek. Całość przeczytasz w serwisie {0}.","Dieser Beitrag wurde über eine Nachrichtensuche gefunden, die nur die Überschrift liefert. Den ganzen Beitrag findest du bei {0}.","Esta historia se encontró a través de un buscador de noticias, que solo muestra el titular. Lee la historia completa en {0}."],
 ["Machine-translated by Google Translate from the publisher's English text.","Przetłumaczone automatycznie przez Tłumacza Google z angielskiego tekstu wydawcy.","Maschinell von Google Übersetzer aus dem englischen Text des Verlags übersetzt.","Traducido automáticamente por el Traductor de Google a partir del texto en inglés del medio."],
 ["Shown in English, as published. Translation isn't available right now. Try again later.","Po angielsku, tak jak opublikowano. Tłumaczenie jest teraz niedostępne. Spróbuj później.","Auf Englisch, wie veröffentlicht. Die Übersetzung ist gerade nicht verfügbar. Versuch es später noch einmal.","En inglés, tal como se publicó. La traducción no está disponible ahora. Inténtalo más tarde."],
 ["Onboarding","Wprowadzenie","Einführung","Bienvenida"],

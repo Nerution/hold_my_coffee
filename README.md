@@ -63,17 +63,44 @@ If you open `index.html` directly, or serve the folder with another static serve
 | `GOOD_THINGS_REFRESH_MINUTES` | `30` | Automatic refresh interval |
 | `GOOD_THINGS_MIN_REFRESH_SECONDS` | `60` | Shortest gap between refreshes asked for from the app |
 | `GOOD_THINGS_MAX_AGE_DAYS` | `10` | Ignore stories older than this |
-| `GOOD_THINGS_MAX_STORIES` | `120` | Most stories kept at once |
+| `GOOD_THINGS_MAX_STORIES` | `200` | Most stories kept at once |
 | `GOOD_THINGS_TRANSLATOR` | `google` | `google`, `claude` or `off` |
+| `GOOD_THINGS_SEARCH` | on | Set to `off` to skip the Google News searches |
 | `GOOD_THINGS_FEEDS` | built-in list | Path to a JSON file with your own feed list |
 | `GOOD_THINGS_CACHE` | `server/data/cache.json` | Where the last result is stored |
 
 ## Where the news comes from
 
-The outlets are listed in `server/feeds.mjs`. There are two kinds:
+The sources are listed in `server/feeds.mjs`: 45 outlet feeds and 20 Google News searches. There are three kinds:
 
-- **Positive outlets** such as Positive News, Good News Network, Reasons to be Cheerful, The Optimist Daily and the Guardian's "The Upside". Their stories are kept unless they read as clearly negative.
-- **General and science outlets** such as BBC News, the Guardian's environment section, ScienceDaily, NASA, Mongabay, Yale Environment 360, NPR and Smithsonian. Only stories with a clear positive development and no negative signal pass. With AI review on, the model makes the final call.
+- **Positive outlets** such as Positive News, Good News Network, Reasons to be Cheerful, The Optimist Daily, YES! Magazine, The Better India, Shareable, Anthropocene Magazine and the Guardian's "The Upside". Their stories are kept unless they read as clearly negative.
+- **General, science and specialist outlets.** Only stories with a clear positive development and no negative signal pass. With AI review on, the model makes the final call. They include:
+  - environment and conservation magazines: Mongabay, Yale e360, Ensia, Grist, Hakai, The Revelator, Carbon Brief, Rewilding Europe and others;
+  - science, health and space: ScienceDaily, Phys.org, Medical Xpress, Science News, Quanta, New Atlas, MIT News, The Conversation, NIH, NASA, ESA and others;
+  - education and culture: The Hechinger Report, Hyperallergic, Colossal;
+  - world and regional news in English: UN News, Al Jazeera, DW, ABC Australia, CBC, RNZ, Notes from Poland, BBC and NPR.
+- **Google News searches.** Ten topic searches (wildlife recovery, medical progress, clean energy records, restoration, community help and more) and one broad good-news search in each of ten country editions (UK, India, Australia, Canada, Ireland, Kenya, Nigeria, South Africa, the Philippines, Singapore).
+  - These reach thousands of outlets, including small local papers, and each story is credited to the outlet that published it.
+  - Search results give only a headline, so only headlines with a positive signal and no negative one are kept. The article page says so and links to the full story.
+
+`BLOCKED_SOURCES` in the same file lists outlets that are never shown, even when a search finds them: tabloids flagged by reliability reviews, and press-release wires. Add names there to exclude more.
+
+### Checking the feeds
+
+Websites move or drop their feeds, so check the list now and then:
+
+    cd server
+    npm run check-feeds
+
+It prints each feed and search with:
+
+- whether it answered;
+- how many items it has;
+- how many are recent;
+- how many pass the positive filter;
+- when its newest item was published.
+
+Remove failed feeds from `feeds.mjs`, or fix their addresses. To add an outlet, find its RSS or Atom feed (often at `/feed/` or `/rss`) and add one line. Set `GOOD_THINGS_SEARCH=off` to turn the Google News searches off.
 
 Every story links to the original article. When several outlets report the same event, the earliest report leads and the others appear under "Also reported by".
 
@@ -92,6 +119,7 @@ What the server never does:
 - `server/lib.mjs`: feed parsing (RSS and Atom), the keyword filter, the topic and country guesses, and duplicate grouping.
 - `server/classify.mjs`: the optional Claude review.
 - `server/translate.mjs`: translation with Google Translate or Claude, cached per story and language.
+- `server/check-feeds.mjs`: the feed check (`npm run check-feeds`).
 - `server/test/`: tests that use made-up test feeds and a fake translator. Run them with `npm test` in `server/`.
 
 ## How the script in index.html is organised
@@ -107,7 +135,7 @@ What the server never does:
 
 ## Known limits
 
-- **Not run against real feeds yet.** The feed reader was tested with made-up test feeds only. Real feeds can differ, so watch the server log on first run.
+- **Feeds not checked from here:** the feed addresses were not checked from the build environment, so some may be wrong or moved. Run `npm run check-feeds` to see which work.
 - **Keyword filter:** without AI review, the filter can let through a story that isn't really positive, and can drop one that is.
 - **Google translation may be refused:** the free Google endpoint is unofficial and can stop answering for a while. A public release would need the paid Google Cloud Translation API or another service.
 - **Unreviewed translations:** the interface translations were written by AI and haven't been checked by native speakers.

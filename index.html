@@ -498,7 +498,7 @@ const ago=iso=>{const m=Math.max(0,Math.round((Date.now()-Date.parse(iso))/6e4))
 const when=s=>s.published?ago(s.published):fmt(s.date);
 const pic=s=>s.img?`<img src="${esc(s.img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">`:"";
 function liveBar(){
-  const n=LIVE.sources.filter(x=>x.ok).length,busy=LIVE.state==="loading";
+  const n=new Set(STORIES.map(s=>s.source)).size,busy=LIVE.state==="loading";
   const trn=LANG!=="en"&&LIVE.state==="live"&&(LIVE.translating||BTR.running)?STORIES.filter(s=>s.tr&&s.tr[LANG]).length:-1;
   const msg=busy?t("Checking outlets for new good news…"):trn>-1?t("Translating stories into {0}… {1}/{2}",I18N.langs[LANG],trn,STORIES.length):LIVE.state==="live"?t("Live from {0} outlets · updated {1}",n,ago(LIVE.updatedAt)):LIVE.state==="offline"?t("Sample stories · news server not found"):LIVE.state==="error"?t("Sample stories · live news unavailable right now"):t("Sample stories");
   return `<div class="livebar"><i class="dot ${busy||trn>-1?"busy":LIVE.state==="live"?"":"off"}"></i><span class="grow">${msg}</span><button data-a="refresh" class="${busy?"spin":""}" ${busy?"disabled":""} aria-label="${t("Refresh")}">${ic("refresh")}${t("Refresh")}</button></div>`;
@@ -510,7 +510,7 @@ const REGIONS={"Europe":["Poland","Germany","France","United Kingdom","Spain","I
 const SAMPLE_PLACES={"Brazil":[-58,-6],"Italy":[10,40],"Philippines":[122,12],"Poland":[20,52],"Kazakhstan":[67,48],"South Africa":[29,-29],"Australia":[134,-25],"United States":[-98,39]};
 let PLACES=SAMPLE_PLACES;
 function refreshDerived(){
-  SOURCES=[...new Set(STORIES.map(s=>s.source).concat(LIVE.sources.filter(x=>x.ok).map(x=>x.source)))].sort();
+  SOURCES=[...new Set(STORIES.map(s=>s.source).concat(LIVE.sources.filter(x=>x.ok&&x.kind!=="search").map(x=>x.source)))].sort();
   const p={};STORIES.forEach(s=>{const g=s.geo||SAMPLE_PLACES[s.country];if(g&&s.country!=="Worldwide")p[s.country]=g});PLACES=p;
 }
 
@@ -601,7 +601,7 @@ function card(s,note){
   return `<article class="card" tabindex="0" data-a="open" data-id="${s.id}">
   <div class="art">${art(s.art)}${pic(s)}<span class="tag">${t(s.tag)}</span></div>
   <div class="cbody">${note?`<div class="outside">${note}</div>`:""}
-   <div class="cat">${esc(t(s.cat))} · ${t(s.country)}</div><h3>${esc(st(s,"title"))}</h3><p>${esc(st(s,"sum"))}</p>
+   <div class="cat">${esc(t(s.cat))} · ${t(s.country)}</div><h3>${esc(st(s,"title"))}</h3>${st(s,"sum")?`<p>${esc(st(s,"sum"))}</p>`:""}
    <div class="meta"><span>${esc(s.source)}</span><span>${when(s)}</span>${s.read?`<span>${t("{0} min read",s.read)}</span>`:""}${s.also.length?`<span>${s.also.length===1?t("+1 source"):t("+{0} sources",s.also.length)}</span>`:""}${!s.live||s.ai?`<span class="ai">${t("AI summary")}</span>`:""}</div></div>
   <div class="acts">
    <button data-a="save" data-id="${s.id}" aria-pressed="${saved(s.id)}">${ic("bookmark")}${saved(s.id)?t("Saved"):t("Save")}</button>
@@ -676,6 +676,7 @@ V.article=()=>{
    ${s.what?`<div class="summary"><div class="sumhead"><span class="ai">${t("AI-generated summary")}</span><span class="small muted">${t("Not original journalism")}</span></div>
     ${LANG!=="en"?`<p class="small muted" style="font-size:13px">${trNote(s)}</p>`:""}
     <div><h4>${t("What happened")}</h4><p>${esc(st(s,"what"))}</p></div><div><h4>${t("Why it matters")}</h4><p>${esc(st(s,"why"))}</p></div><div><h4>${t("The bigger picture")}</h4><p>${esc(st(s,"bigger"))}</p></div></div>`
+    :!(st(s,"excerpt")||st(s,"sum"))?`<div class="pubbox"><p>${t("This story was found through a news search, which shares only the headline. Read the full story at {0}.",esc(s.source))}</p></div>`
     :`<div class="pubbox"><div class="eyebrow">${t("From the publisher")}</div><p>${esc(st(s,"excerpt")||st(s,"sum"))}</p><p class="small muted">${t("The publisher's own description, not an AI summary.")}${LANG!=="en"?" "+trNote(s):""}</p></div>`}
    <a class="btn" href="${s.url}" target="_blank" rel="noopener">${t("Read original article")} ${ic("ext")}</a>
    <div><div class="eyebrow" style="margin-bottom:8px">${t("Also reported by")}</div><div class="also">${s.also.length?s.also.map(a=>`<a href="${a[1]}" target="_blank" rel="noopener">${esc(a[0])} ${ic("ext")}</a>`).join(""):`<span class="muted">${s.live?t("No other outlet in the app has reported this yet."):t("One source so far. Not yet independently confirmed.")}</span>`}</div></div>
@@ -758,7 +759,7 @@ V.saved=()=>{const open=S.p.col||0,c=S.cols[open];return `<div class="pad"><h1 s
  ${c.ids.map(id=>mini(byId(id))).join("")||empty(t("Nothing in “{0}” yet. Tap the bookmark on any story.",esc(t(c.name))))}</div>`};
 
 V.sources=()=>{const f=S.prefs.sources,rest=SOURCES.filter(s=>!f.includes(s)&&!S.hidden.has(s));return bar(t("My Sources"))+`<div class="pad" style="padding-top:8px"><p class="muted">${t("Stories from these publishers get a slight lift in your feed. Order them by how much you trust them.")}</p>
- <div class="rows">${f.map((s,i)=>`<div class="row"><span style="color:var(--sun)">${ic("star")}</span><span class="grow"><b>${esc(s)}</b><div class="sub">${t("Sample stories: {0}",STORIES.filter(x=>x.source===s).length)}</div></span><button class="iconbtn" data-a="srcMove" data-i="${i}" data-d="-1" aria-label="${t("Move up")}" ${i?"":"disabled style=\"opacity:.3\""}>${ic("up")}</button><button class="iconbtn" data-a="srcMove" data-i="${i}" data-d="1" aria-label="${t("Move down")}" ${i<f.length-1?"":"disabled style=\"opacity:.3\""}>${ic("down")}</button><button class="iconbtn" data-a="follow" data-src="${esc(s)}" aria-label="${t("Remove")}">${ic("close")}</button></div>`).join("")||`<div class="row muted">${t("You haven't chosen any sources yet.")}</div>`}</div>
+ <div class="rows">${f.map((s,i)=>`<div class="row"><span style="color:var(--sun)">${ic("star")}</span><span class="grow"><b>${esc(s)}</b><div class="sub">${(isLive()?t("Stories: {0}",STORIES.filter(x=>x.source===s).length):t("Sample stories: {0}",STORIES.filter(x=>x.source===s).length))}</div></span><button class="iconbtn" data-a="srcMove" data-i="${i}" data-d="-1" aria-label="${t("Move up")}" ${i?"":"disabled style=\"opacity:.3\""}>${ic("up")}</button><button class="iconbtn" data-a="srcMove" data-i="${i}" data-d="1" aria-label="${t("Move down")}" ${i<f.length-1?"":"disabled style=\"opacity:.3\""}>${ic("down")}</button><button class="iconbtn" data-a="follow" data-src="${esc(s)}" aria-label="${t("Remove")}">${ic("close")}</button></div>`).join("")||`<div class="row muted">${t("You haven't chosen any sources yet.")}</div>`}</div>
  <div class="eyebrow">${t("Add a source")}</div><div class="chips">${rest.map(s=>`<button class="chip" data-a="follow" data-src="${esc(s)}">+ ${esc(s)}</button>`).join("")}</div>
  ${S.hidden.size?`<div class="eyebrow">${t("Hidden sources")}</div><div class="chips">${[...S.hidden].map(s=>`<button class="chip" data-a="unhide" data-src="${esc(s)}">${t("Show {0} again",esc(s))}</button>`).join("")}</div>`:""}</div>`};
 

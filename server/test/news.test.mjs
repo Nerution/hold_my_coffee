@@ -105,3 +105,14 @@ test("a failing feed is reported, the others still load", async () => {
   assert.equal(out.sources.find(s => s.source === "Missing").ok, false);
   assert.ok(out.stories.length >= 3);
 });
+
+test("Google News results: original outlet, clean headline, tabloids and press releases blocked", async () => {
+  const out = await collect({ feeds: [{ source: "Google News", label: "Test search", url: fx("googlenews.xml"), kind: "search" }], now: NOW, log: quiet, ai: false });
+  assert.equal(out.stories.length, 1, out.stories.map(s => s.source + ": " + s.title).join(" | "));
+  const [s] = out.stories;
+  assert.equal(s.source, "Example Valley Gazette");
+  assert.equal(s.title, "Test town volunteers restore historic river path");
+  assert.equal(s.excerpt, "");
+  assert.equal(s.url, "https://news.google.com/rss/articles/CBMiTESTONE?oc=5");
+  assert.equal(out.sources[0].source, "Test search");
+});

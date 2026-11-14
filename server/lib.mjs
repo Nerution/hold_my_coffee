@@ -62,6 +62,7 @@ export function parseFeed(body) {
       author: author && !/^https?:/.test(author) && !author.includes("@") ? author.slice(0, 80) : "",
       image: firstImage(it),
       categories: arr(it.category).map(c => cleanText(text(c) || c?.["@term"])).filter(Boolean),
+      outlet: cleanText(text(it.source)), // Google News names the original outlet here
     };
   }).filter(i => i.title && /^https?:\/\//.test(i.url));
 }
@@ -75,6 +76,7 @@ const CLICKBAIT = /you won'?t believe|shocking|jaw[- ]dropping|mind[- ]blowing|t
 const LISTICLE = /^(\d+|ten|five|seven) (best|things|ways|reasons)|quiz|horoscope|podcast|newsletter|crossword|sponsored|deal of|sale\b|gift guide|photos of the week|in pictures/i;
 
 export function screen(item, kind) {
+  if (kind === "search") return screenHeadline(item);
   const hay = `${item.title}. ${item.description}`;
   const neg = (hay.match(new RegExp(NEGATIVE.source, "gi")) || []).length;
   const pos = (hay.match(new RegExp(POSITIVE.source, "gi")) || []).length;
@@ -85,6 +87,21 @@ export function screen(item, kind) {
   if (kind === "positive") return neg >= 3 || (titleNeg && pos === 0) ? { keep: false, reason: "reads as negative news" } : { keep: true, pos, neg };
   if (titleNeg || neg > 1) return { keep: false, reason: "reads as negative news" };
   return pos >= 2 ? { keep: true, pos, neg } : { keep: false, reason: "no clear positive development" };
+}
+
+/** Search results carry only a headline, and the search itself already asked for good news. */
+function screenHeadline(item) {
+  if (CLICKBAIT.test(item.title)) return { keep: false, reason: "clickbait headline" };
+  if (LISTICLE.test(item.title)) return { keep: false, reason: "not a news story" };
+  if (NEGATIVE.test(item.title)) return { keep: false, reason: "reads as negative news" };
+  if (item.title.split(" ").length < 5) return { keep: false, reason: "too little text to judge" };
+  return POSITIVE.test(item.title) ? { keep: true, pos: 1, neg: 0 } : { keep: false, reason: "no clear positive development" };
+}
+
+/** Google News headlines end with " - Outlet name"; returns the headline without it. */
+export function stripOutlet(title, outlet) {
+  if (outlet && title.endsWith(" - " + outlet)) return title.slice(0, -(outlet.length + 3)).trim();
+  return title.replace(/\s+[-|–]\s+[^-|–]{2,40}$/, m => (outlet ? m : "")).trim() || title;
 }
 
 /* ---------- light classification used when AI is off ---------- */

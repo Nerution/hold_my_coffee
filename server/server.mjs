@@ -52,7 +52,7 @@ function publicView(d, lang, extra = {}) {
     stories = translations.attach(stories, lang);
     translation = { lang, available: translations.available(), provider: PROVIDER, translating: translations.pending(lang), done: stories.filter(s => s.tr).length, total: stories.length };
   }
-  return { updatedAt: d.updatedAt, ai: d.ai, windowDays: d.windowDays, sources: d.sources.map(({ source, ok, candidates, error }) => ({ source, ok, candidates, error })), stories, translation, ...extra };
+  return { updatedAt: d.updatedAt, ai: d.ai, windowDays: d.windowDays, sources: d.sources.map(({ source, kind, ok, candidates, error }) => ({ source, kind, ok, candidates, error })), stories, translation, ...extra };
 }
 
 function send(res, code, body, type = "application/json; charset=utf-8") {

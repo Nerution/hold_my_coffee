@@ -1,13 +1,19 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { FEEDS } from "./feeds.mjs";
-import { parseFeed, screen, classifyHeuristic, detectCountry, groupStories, storyId, truncate, GEO, CATEGORIES } from "./lib.mjs";
+import { FEEDS, BLOCKED_SOURCES } from "./feeds.mjs";
+import { parseFeed, stripOutlet, screen, classifyHeuristic, detectCountry, groupStories, storyId, truncate, GEO, CATEGORIES } from "./lib.mjs";
 import { aiEnabled, reviewWithAI, MODEL } from "./classify.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const MAX_AGE_DAYS = +(process.env.GOOD_THINGS_MAX_AGE_DAYS || 10);
-const MAX_STORIES = +(process.env.GOOD_THINGS_MAX_STORIES || 120);
+const MAX_STORIES = +(process.env.GOOD_THINGS_MAX_STORIES || 200);
+const PARALLEL_FEEDS = 8;
+const blocked = name => BLOCKED_SOURCES.some(b => name.toLowerCase() === b.toLowerCase() || name.toLowerCase().startsWith(b.toLowerCase() + " "));
+async function eachLimited(list, n, fn) {
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, list.length) }, async () => { while (i < list.length) await fn(list[i++]); }));
+}
 const ART = { "Environment & Nature": "forest", Conservation: "forest", Animals: "ocean", Space: "space", "Health & Medicine": "lab", Science: "lab", Technology: "signal", Innovation: "energy", Education: "books", Culture: "gallery", Sports: "court", "Business & Economy": "market", "Local Communities": "town", "Humanity & Community": "town", "Inspiring People": "plains", World: "energy" };
 
 async function fetchFeed(feed, timeoutMs = 12000) {
@@ -27,11 +33,16 @@ async function fetchFeed(feed, timeoutMs = 12000) {
 export async function collect({ feeds = FEEDS, previous = null, now = Date.now(), log = console, ai = aiEnabled(), review = reviewWithAI } = {}) {
   const status = [];
   const seen = new Set(), candidates = [];
-  await Promise.all(feeds.map(async feed => {
+  await eachLimited(feeds, PARALLEL_FEEDS, async feed => {
     try {
       const items = parseFeed(await fetchFeed(feed));
       let kept = 0;
-      for (const it of items) {
+      for (const raw of items) {
+        const search = feed.kind === "search";
+        const source = (search && raw.outlet) || feed.source;
+        if (blocked(source)) continue;
+        // A search result's description only repeats the headline, so it is dropped.
+        const it = search ? { ...raw, title: stripOutlet(raw.title, raw.outlet), description: "" } : raw;
         if (!it.date) continue;
         const age = (now - Date.parse(it.date)) / 864e5;
         if (age > MAX_AGE_DAYS || age < -1) continue;
@@ -42,15 +53,15 @@ export async function collect({ feeds = FEEDS, previous = null, now = Date.now()
         // With AI on, the model makes the final call on anything that isn't obviously out.
         const pass = sc.keep || (ai && !/clickbait|not a news story|too little/.test(sc.reason || "") && (feed.kind === "positive" || /no clear positive/.test(sc.reason)));
         if (!pass) continue;
-        candidates.push({ ...it, id: storyId(key), source: feed.source, kind: feed.kind, heuristicKeep: sc.keep });
+        candidates.push({ ...it, id: storyId(key), source, kind: feed.kind, heuristicKeep: sc.keep });
         kept++;
       }
-      status.push({ source: feed.source, url: feed.url, ok: true, items: items.length, candidates: kept });
+      status.push({ source: feed.label || feed.source, kind: feed.kind, url: feed.url, ok: true, items: items.length, candidates: kept });
     } catch (err) {
-      status.push({ source: feed.source, url: feed.url, ok: false, error: err.message });
-      log.warn(`feed failed: ${feed.source} ${feed.url}: ${err.message}`);
+      status.push({ source: feed.label || feed.source, kind: feed.kind, url: feed.url, ok: false, error: err.message });
+      log.warn(`feed failed: ${feed.label || feed.source} ${feed.url}: ${err.message}`);
     }
-  }));
+  });
 
   const reviews = new Map(Object.entries(previous?.reviews || {}));
   let aiUsed = false;
