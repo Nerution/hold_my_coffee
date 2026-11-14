@@ -1,0 +1,17 @@
+{
+  "name": "good-things-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Fetches news feeds, keeps the positive and constructive stories, and serves them to the Good Things app.",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "fast-xml-parser": "^5.12.1",
+    "zod": "^4.6.7"
+  }
+}

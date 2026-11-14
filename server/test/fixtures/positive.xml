@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/">
+<channel><title>Test Outlet A</title>
+<item>
+ <title><![CDATA[Test story: river otters return to a restored test river &amp; thrive]]></title>
+ <link>https://example.com/a/otters?utm_source=rss</link>
+ <pubDate>Thu, 12 Nov 2026 09:00:00 +0000</pubDate>
+ <dc:creator><![CDATA[Test Author]]></dc:creator>
+ <description><![CDATA[<p>Fixture text. After a restoration project in Scotland, otters have returned to the river and the population is recovering.</p><p>The post Test story appeared first on Test Outlet A.</p>]]></description>
+ <content:encoded><![CDATA[<p>]]>word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word word<![CDATA[</p>]]></content:encoded>
+ <media:content url="https://example.com/img/otter.jpg" medium="image"/>
+</item>
+<item>
+ <title>YOU WON'T BELIEVE what this test village did!!</title>
+ <link>https://example.com/a/clickbait</link>
+ <pubDate>Thu, 12 Nov 2026 10:00:00 +0000</pubDate>
+ <description>Fixture text for a clickbait headline that should be filtered out by the screen.</description>
+</item>
+<item>
+ <title>Old test story about a community garden that helps neighbours</title>
+ <link>https://example.com/a/old</link>
+ <pubDate>Mon, 01 Jun 2026 10:00:00 +0000</pubDate>
+ <description>Fixture text. This item is older than the window and should be ignored.</description>
+</item>
+<item>
+ <title>Test volunteers open free food bank for the community in Kenya</title>
+ <link>https://example.com/a/foodbank</link>
+ <pubDate>Fri, 13 Nov 2026 08:00:00 +0000</pubDate>
+ <description>Fixture text. Volunteers in Nairobi opened a free food bank that helps hundreds of families each week.</description>
+ <enclosure url="https://example.com/img/foodbank.jpg" type="image/jpeg" length="1"/>
+</item>
+</channel></rss>

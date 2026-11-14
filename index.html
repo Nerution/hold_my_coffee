@@ -90,6 +90,18 @@ input[type=text],input[type=search],input[type=time]{font:inherit;color:var(--in
 .card{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;cursor:pointer;display:block}
 .art{position:relative;aspect-ratio:16/9;background:var(--sunk)}
 .art>svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.art>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.livebar{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);margin-top:-6px}
+.livebar .dot{width:8px;height:8px;border-radius:50%;background:var(--sage-ink);flex:none}
+.livebar .dot.off{background:var(--muted);opacity:.5}
+.livebar .dot.busy{animation:pulse 1s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.livebar span.grow{flex:1;min-width:0}
+.livebar button{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-weight:600;font-size:13px;flex:none}
+.livebar button .ic{width:16px;height:16px}
+.livebar button.spin .ic{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pubbox{background:var(--surface);border-radius:16px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px}
 .tag{position:absolute;left:12px;bottom:12px;background:rgba(255,253,248,.94);color:#1F3D2F;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:5px 10px;border-radius:6px;border-left:3px solid var(--sun)}
 .cbody{padding:14px 16px 8px;display:flex;flex-direction:column;gap:7px}
 .cat{font-size:12px;font-weight:600;color:var(--sage-ink);letter-spacing:.03em}
@@ -157,6 +169,7 @@ nav .center .orb svg{width:26px;height:26px}
 .guide .chips{gap:6px}.guide .chip{padding:5px 10px;font-size:12.5px}
 /* article */
 .article .art{aspect-ratio:4/3}
+.article .art:has(img) .ph.draw,.article .noimg .ph.img{display:none}
 .article .ph{position:absolute;right:10px;bottom:10px;font-size:10.5px;background:rgba(0,0,0,.45);color:#fff;padding:3px 7px;border-radius:5px}
 .article .floatbar{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;z-index:2}
 .article .floatbar .iconbtn{background:rgba(255,253,248,.92);color:#1D2B23}
@@ -232,7 +245,7 @@ nav .center .orb svg{width:26px;height:26px}
     <div class="eyebrow">App language</div>
     <div class="chips" id="langs"></div>
     <ul id="guide"></ul>
-    <p class="note muted">Every story is real and links to its publisher. Summaries were written by AI from those sources. Pictures are drawn placeholders, standing in for licensed editorial photography.</p>
+    <p class="note muted">Run through the news server, the app shows live positive stories from real outlets, refreshed on request. Opened as a plain file, it shows bundled sample stories with drawn placeholder pictures.</p>
   </aside>
   <div class="phone">
     <div id="screen"></div>
@@ -428,12 +441,49 @@ const STORIES=[
  also:[["Associated Press (Fact Focus)","https://www.washingtontimes.com/news/2026/sep/29/fact-focus-poverty-rate-time-low-factors-consider/"]],
  kw:"business economy economic money income poverty jobs families children census",moods:["progress","world"]}
 ];
-const byId=id=>STORIES.find(s=>s.id===id);
+const ARCHIVE=new Map();
+const byId=id=>STORIES.find(s=>s.id===id)||ARCHIVE.get(id);
+/* live news: filled from the server's /api/stories; the sample STORIES stay when it can't be reached */
+const LIVE={state:location.protocol==="file:"?"offline":"idle",updatedAt:null,ai:null,sources:[],windowDays:10,error:""};
+const isLive=()=>LIVE.state==="live"||(LIVE.state==="loading"&&!!LIVE.updatedAt);
+function normalize(x){return Object.assign({what:"",why:"",bigger:"",excerpt:"",also:[],moods:["hope"],kw:"",w:.5,read:null,author:"",tag:"Progress",country:"Worldwide",art:"lab"},x)}
+function applyLive(d){
+  STORIES.forEach(s=>ARCHIVE.set(s.id,s));
+  STORIES.splice(0,STORIES.length,...d.stories.map(normalize));
+  Object.assign(LIVE,{updatedAt:d.updatedAt,ai:d.ai,sources:d.sources||[],windowDays:d.windowDays||10});
+  refreshDerived();
+}
+async function loadLive(force){
+  if(location.protocol==="file:"){LIVE.state="offline";render(1);if(force)toast(t("Live news needs the server. Showing sample stories."));return}
+  const before=new Set(STORIES.map(s=>s.id)),was=LIVE.state;LIVE.state="loading";render(1);
+  try{
+    const r=await fetch(force?"api/refresh":"api/stories",{method:force?"POST":"GET",headers:{accept:"application/json"}});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const d=await r.json();
+    if(!d.stories||!d.stories.length){LIVE.state=was==="live"?"live":"error";LIVE.sources=d.sources||[];LIVE.error=t("No outlet could be reached");render(1);if(force)toast(t("Couldn't reach the news outlets. Try again later."));return}
+    applyLive(d);LIVE.state="live";LIVE.error="";render(1);
+    if(force){const n=STORIES.filter(s=>!before.has(s.id)).length;toast(d.throttled?t("Just updated. Check again in a minute."):n?t("New stories: {0}",n):t("No new stories yet. Good news takes its time."))}
+    if(d.refreshing)setTimeout(()=>loadLive(false),20000);
+  }catch(e){LIVE.state=LIVE.updatedAt?"live":"error";LIVE.error=e.message;render(1);if(force)toast(t("Couldn't update. Check your connection."))}
+}
+const ago=iso=>{const m=Math.max(0,Math.round((Date.now()-Date.parse(iso))/6e4));return m<1?t("just now"):m<60?t("{0} min ago",m):m<1440?t("{0} h ago",Math.round(m/60)):t("{0} d ago",Math.round(m/1440))};
+const when=s=>s.published?ago(s.published):fmt(s.date);
+const pic=s=>s.img?`<img src="${esc(s.img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">`:"";
+function liveBar(){
+  const n=LIVE.sources.filter(x=>x.ok).length,busy=LIVE.state==="loading";
+  const msg=busy?t("Checking outlets for new good news…"):LIVE.state==="live"?t("Live from {0} outlets · updated {1}",n,ago(LIVE.updatedAt)):LIVE.state==="offline"?t("Sample stories · open through the server for live news"):LIVE.state==="error"?t("Sample stories · live news unavailable right now"):t("Sample stories");
+  return `<div class="livebar"><i class="dot ${busy?"busy":LIVE.state==="live"?"":"off"}"></i><span class="grow">${msg}</span><button data-a="refresh" class="${busy?"spin":""}" ${busy?"disabled":""} aria-label="${t("Refresh")}">${ic("refresh")}${t("Refresh")}</button></div>`;
+}
 const CATS=["Environment & Nature","Science","Health & Medicine","Technology","Animals","World","Humanity & Community","Space","Culture","Education","Sports","Business & Economy","Local Communities","Innovation","Inspiring People","Conservation"];
-const SOURCES=[...new Set(STORIES.map(s=>s.source))].concat(["Reuters","BBC News"]);
+let SOURCES=[...new Set(STORIES.map(s=>s.source))].concat(["Reuters","BBC News"]);
 const MOODS=[["hope","Give me hope"],["smile","Make me smile"],["amazing","Show me something amazing"],["faith","Restore my faith in humanity"],["progress","Show me progress"],["animals","Show me animals"],["world","Show me the world getting better"],["calm","Give me something calm"]];
 const REGIONS={"Europe":["Poland","Germany","France","United Kingdom","Spain","Italy","Sweden","Ukraine"],"Americas":["United States","Canada","Mexico","Brazil","Argentina"],"Africa":["South Africa","Kenya","Nigeria","Ethiopia","Egypt"],"Asia":["Kazakhstan","Japan","India","China","Indonesia","Philippines"],"Oceania":["Australia","New Zealand"]};
-const PLACES={"Brazil":[-58,-6],"Italy":[10,40],"Philippines":[122,12],"Poland":[20,52],"Kazakhstan":[67,48],"South Africa":[29,-29],"Australia":[134,-25],"United States":[-98,39]};
+const SAMPLE_PLACES={"Brazil":[-58,-6],"Italy":[10,40],"Philippines":[122,12],"Poland":[20,52],"Kazakhstan":[67,48],"South Africa":[29,-29],"Australia":[134,-25],"United States":[-98,39]};
+let PLACES=SAMPLE_PLACES;
+function refreshDerived(){
+  SOURCES=[...new Set(STORIES.map(s=>s.source).concat(LIVE.sources.filter(x=>x.ok).map(x=>x.source)))].sort();
+  const p={};STORIES.forEach(s=>{const g=s.geo||SAMPLE_PLACES[s.country];if(g&&s.country!=="Worldwide")p[s.country]=g});PLACES=p;
+}
 
 /* ---------- state (in memory for this session) ---------- */
 const S={screen:"splash",p:{},stack:[],tab:"home",
@@ -446,7 +496,7 @@ const S={screen:"splash",p:{},stack:[],tab:"home",
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt=d=>new Date(d+"T12:00:00Z").toLocaleDateString(LOC[LANG],{day:"numeric",month:"short",year:"numeric"});
-const IC={home:"M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z",search:"M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-3.8-3.8",
+const IC={refresh:"M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5",home:"M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z",search:"M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-3.8-3.8",
  spark:"M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z",
  bookmark:"M6 4h12v17l-6-4-6 4z",user:"M12 12a4 4 0 1 0 0-8a4 4 0 0 0 0 8zM4 21c1-4 4.5-6 8-6s7 2 8 6",
  share:"M12 15V4M8 8l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7",star:"M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z",
@@ -511,16 +561,16 @@ const st=(s,f)=>(LANG!=="en"&&I18N.stories[LANG]&&I18N.stories[LANG][s.id]&&I18N
 /* ---------- components ---------- */
 function card(s,note){
   return `<article class="card" tabindex="0" data-a="open" data-id="${s.id}">
-  <div class="art">${art(s.art)}<span class="tag">${t(s.tag)}</span></div>
+  <div class="art">${art(s.art)}${pic(s)}<span class="tag">${t(s.tag)}</span></div>
   <div class="cbody">${note?`<div class="outside">${note}</div>`:""}
    <div class="cat">${esc(t(s.cat))} · ${t(s.country)}</div><h3>${esc(st(s,"title"))}</h3><p>${esc(st(s,"sum"))}</p>
-   <div class="meta"><span>${esc(s.source)}</span><span>${fmt(s.date)}</span><span>${t("{0} min read",s.read)}</span><span class="ai">${t("AI summary")}</span></div></div>
+   <div class="meta"><span>${esc(s.source)}</span><span>${when(s)}</span>${s.read?`<span>${t("{0} min read",s.read)}</span>`:""}${s.also.length?`<span>${s.also.length===1?t("+1 source"):t("+{0} sources",s.also.length)}</span>`:""}${!s.live||s.ai?`<span class="ai">${t("AI summary")}</span>`:""}</div></div>
   <div class="acts">
    <button data-a="save" data-id="${s.id}" aria-pressed="${saved(s.id)}">${ic("bookmark")}${saved(s.id)?t("Saved"):t("Save")}</button>
    <button data-a="follow" data-src="${esc(s.source)}" aria-pressed="${following(s.source)}">${ic("star")}${following(s.source)?t("Following"):t("Source")}</button>
    <button data-a="share" data-id="${s.id}">${ic("share")}${t("Share")}</button></div></article>`;
 }
-const mini=s=>`<button class="mini" data-a="open" data-id="${s.id}"><span class="art">${art(s.art)}</span><span><span class="cat">${esc(t(s.cat))} · ${t(s.country)}</span><h3>${esc(st(s,"title"))}</h3><span class="meta">${esc(s.source)} · ${fmt(s.date)}</span></span></button>`;
+const mini=s=>`<button class="mini" data-a="open" data-id="${s.id}"><span class="art">${art(s.art)}${pic(s)}</span><span><span class="cat">${esc(t(s.cat))} · ${t(s.country)}</span><h3>${esc(st(s,"title"))}</h3><span class="meta">${esc(s.source)} · ${when(s)}</span></span></button>`;
 const bar=(title,right="")=>`<div class="top"><button class="iconbtn" data-a="back" aria-label="${t("Back")}">${ic("back")}</button><h2>${title}</h2>${right}</div>`;
 const empty=x=>`<p class="muted" style="text-align:center;padding:26px 10px">${x}</p>`;
 function regionPicker(){
@@ -555,13 +605,14 @@ V.home=()=>{
   const feed=mood?STORIES.filter(s=>s.moods.includes(mood[0])&&!S.hidden.has(s.source)):shown;
   return `<div class="pad">
   <div class="hello"><div class="eyebrow">${new Date().toLocaleDateString(LOC[LANG],{weekday:"long",day:"numeric",month:"long"})}</div><h1>${hi}. ${t("Here is what went right.")}</h1></div>
+  ${liveBar()}
   <button class="good" data-a="good">${ic("spark")}<span>${t("Give me something good")}</span>${ic("chev")}</button>
   <button class="dose" data-a="go" data-to="dose"><span class="eyebrow" style="color:inherit">${t("Your daily dose")}</span><strong>${done>=dose.length?t("{0}/{1} positive stories explored today",done,dose.length):t("{0} of {1} stories explored today",done,dose.length)}</strong><span class="pips">${dose.map(s=>`<i class="${S.read.includes(s.id)?"on":""}"></i>`).join("")}</span><span class="small">${done>=dose.length?t("You're caught up."):t("Read them one at a time")} ›</span></button>
   <div><div class="eyebrow" style="margin-bottom:8px">${t("What do you need right now?")}</div><div class="hscroll">${MOODS.map(m=>`<button class="chip" data-a="mood" data-m="${m[0]}" aria-pressed="${S.p.mood===m[0]}">${t(m[1])}</button>`).join("")}</div></div>
   ${mood?`<div class="banner"><span>${t("Showing “{0}” for now. Your preferences are unchanged.",t(mood[1]))}</span><button data-a="mood" data-m="">${t("Clear")}</button></div>`:""}
   ${feed.map(s=>card(s,mood?"":s.id===outside?t("Outside your usual topics"):S.prefs.regions.has(s.country)?t("From your regions"):"")).join("")||empty(t("Nothing matches right now."))}
   ${mood?"":`<div class="stop"><span class="leaf">${ic("leaf")}</span><h3>${done>=dose.length?t("You're caught up with today's good news."):t("That's today's selection.")}</h3><p class="muted">${t("That's enough scrolling for now. There will be more good things tomorrow.")}</p>
-   <button class="btn" data-a="go" data-to="rest">${t("I'm done for now")}</button>${more?`<button class="btn ghost" data-a="more">${t("Show me one more")}</button>`:`<p class="small muted">${t("You've seen every story in this prototype.")}</p>`}</div>`}
+   <button class="btn" data-a="go" data-to="rest">${t("I'm done for now")}</button>${more?`<button class="btn ghost" data-a="more">${t("Show me one more")}</button>`:`<p class="small muted">${isLive()?t("You've seen every story for now. Refresh later for more."):t("You've seen every story in this prototype.")}</p>`}</div>`}
   </div>`;
 };
 V.rest=()=>`<div class="full" style="text-align:center;align-items:center"><div class="spacer"></div>${MARK}<h1>${t("See you tomorrow.")}</h1><p class="lead">${t("Good stories explored today: {0}. In the real app, this is where it would close.",S.read.length)}</p><div class="spacer"></div><button class="btn ghost" data-a="tab" data-to="home">${t("Back to the app")}</button></div>`;
@@ -578,17 +629,18 @@ V.dose=()=>{
 
 V.article=()=>{
   const s=byId(S.p.id);markRead(s.id);const sv=anySaved(s.id);
-  return `<div class="article"><div class="art"><div class="floatbar"><button class="iconbtn" data-a="back" aria-label="${t("Back")}">${ic("back")}</button><span style="display:flex;gap:8px"><button class="iconbtn" data-a="collect" data-id="${s.id}" aria-label="${t("Save to a collection")}" aria-pressed="${sv}">${ic("bookmark")}</button><button class="iconbtn" data-a="share" data-id="${s.id}" aria-label="${t("Share")}">${ic("share")}</button></span></div>${art(s.art)}<span class="tag">${t(s.tag)}</span><span class="ph">${t("Illustration placeholder")}</span></div>
+  return `<div class="article"><div class="art"><div class="floatbar"><button class="iconbtn" data-a="back" aria-label="${t("Back")}">${ic("back")}</button><span style="display:flex;gap:8px"><button class="iconbtn" data-a="collect" data-id="${s.id}" aria-label="${t("Save to a collection")}" aria-pressed="${sv}">${ic("bookmark")}</button><button class="iconbtn" data-a="share" data-id="${s.id}" aria-label="${t("Share")}">${ic("share")}</button></span></div>${art(s.art)}${pic(s)}<span class="tag">${t(s.tag)}</span>${s.img?`<span class="ph img">${t("Image: {0}",esc(s.source))}</span>`:""}<span class="ph draw">${t("Illustration placeholder")}</span></div>
   <div class="pad">
    ${S.p.good?`<div class="banner"><span>${ic("spark")}</span><span>${t("Something good, picked at random.")}</span><button data-a="good">${t("Another")}</button></div>`:""}
    <div class="cat">${esc(t(s.cat))} · ${t(s.country)}</div><h1>${esc(st(s,"title"))}</h1>
-   <div class="byline"><span>${t("Published by")} <b>${esc(s.source)}</b>${s.author?` · ${esc(s.author)}`:""}</span><span>${fmt(s.date)} · ${t("{0} min read at the source",s.read)}</span></div>
+   <div class="byline"><span>${t("Published by")} <b>${esc(s.source)}</b>${s.author?` · ${esc(s.author)}`:""}</span><span>${fmt(s.date)}${s.read?" · "+t("{0} min read at the source",s.read):""}</span></div>
    ${s.serious?`<div class="context">${t("The subject here is serious. It is included because the development itself is constructive.")}</div>`:""}
-   <div class="summary"><div class="sumhead"><span class="ai">${t("AI-generated summary")}</span><span class="small muted">${t("Not original journalism")}</span></div>
-    ${LANG!=="en"?`<p class="small muted" style="font-size:13px">${t("Translated by AI. The original article is in English.")}</p>`:""}
-    <div><h4>${t("What happened")}</h4><p>${esc(st(s,"what"))}</p></div><div><h4>${t("Why it matters")}</h4><p>${esc(st(s,"why"))}</p></div><div><h4>${t("The bigger picture")}</h4><p>${esc(st(s,"bigger"))}</p></div></div>
+   ${s.what?`<div class="summary"><div class="sumhead"><span class="ai">${t("AI-generated summary")}</span><span class="small muted">${t("Not original journalism")}</span></div>
+    ${LANG!=="en"?`<p class="small muted" style="font-size:13px">${s.live?t("Shown in English, as written by the AI from the publisher's text."):t("Translated by AI. The original article is in English.")}</p>`:""}
+    <div><h4>${t("What happened")}</h4><p>${esc(st(s,"what"))}</p></div><div><h4>${t("Why it matters")}</h4><p>${esc(st(s,"why"))}</p></div><div><h4>${t("The bigger picture")}</h4><p>${esc(st(s,"bigger"))}</p></div></div>`
+    :`<div class="pubbox"><div class="eyebrow">${t("From the publisher")}</div><p>${esc(s.excerpt||s.sum)}</p><p class="small muted">${t("The publisher's own description, not an AI summary.")}${LANG!=="en"?" "+t("Shown in English, as published."):""}</p></div>`}
    <a class="btn" href="${s.url}" target="_blank" rel="noopener">${t("Read original article")} ${ic("ext")}</a>
-   <div><div class="eyebrow" style="margin-bottom:8px">${t("Also reported by")}</div><div class="also">${s.also.length?s.also.map(a=>`<a href="${a[1]}" target="_blank" rel="noopener">${esc(a[0])} ${ic("ext")}</a>`).join(""):`<span class="muted">${t("One source so far. Not yet independently confirmed.")}</span>`}</div></div>
+   <div><div class="eyebrow" style="margin-bottom:8px">${t("Also reported by")}</div><div class="also">${s.also.length?s.also.map(a=>`<a href="${a[1]}" target="_blank" rel="noopener">${esc(a[0])} ${ic("ext")}</a>`).join(""):`<span class="muted">${s.live?t("No other outlet in the app has reported this yet."):t("One source so far. Not yet independently confirmed.")}</span>`}</div></div>
    <div><div class="eyebrow" style="margin-bottom:8px">${t("Tune your feed")}</div><div class="tune">
     <button data-a="like" data-d="1" data-c="${esc(s.cat)}" aria-pressed="${(S.like[s.cat]||0)>0}">${ic("plus")}${t("More like this")}</button>
     <button data-a="like" data-d="-1" data-c="${esc(s.cat)}" aria-pressed="${(S.like[s.cat]||0)<0}">${ic("minus")}${t("Less like this")}</button>
@@ -606,8 +658,8 @@ V.discover=()=>`<div class="pad"><h1 style="font-size:28px">${t("Discover")}</h1
   <button class="tile wide" data-a="go" data-to="weekly">${ic("chart")}<span><b>${t("This Week Wasn't All Bad")}</b><br><span class="small muted">${t("Your weekly perspective")}</span></span></button>
   <button class="tile wide" data-a="go" data-to="assistant">${ic("spark")}<span><b>${t("Ask Good Things")}</b><br><span class="small muted">${t("AI assistant · answers only from verified stories")}</span></span></button></div>
  <div class="eyebrow">${t("What do you need right now?")}</div><div class="grid2">${MOODS.map(m=>`<button class="tile mood" data-a="go" data-to="moodfeed" data-m="${m[0]}"><b>${t(m[1])}</b></button>`).join("")}</div>
- <div class="eyebrow">${t("Browse by topic")}</div><div class="grid2">${CATS.map(c=>{const n=STORIES.filter(s=>s.cat===c).length;return `<button class="tile" data-a="go" data-to="category" data-c="${esc(c)}"><b>${esc(t(c))}</b><span class="small muted">${n?t("Stories: {0}",n):t("No sample stories")}</span></button>`}).join("")}</div></div>`;
-V.category=()=>{const l=STORIES.filter(s=>s.cat===S.p.c);return bar(esc(t(S.p.c)))+`<div class="pad" style="padding-top:8px">${l.map(s=>card(s)).join("")||empty(t("No sample stories for this topic in the prototype. The live app would fill it from verified sources."))}</div>`};
+ <div class="eyebrow">${t("Browse by topic")}</div><div class="grid2">${CATS.map(c=>{const n=STORIES.filter(s=>s.cat===c).length;return `<button class="tile" data-a="go" data-to="category" data-c="${esc(c)}"><b>${esc(t(c))}</b><span class="small muted">${n?t("Stories: {0}",n):isLive()?t("None right now"):t("No sample stories")}</span></button>`}).join("")}</div></div>`;
+V.category=()=>{const l=STORIES.filter(s=>s.cat===S.p.c);return bar(esc(t(S.p.c)))+`<div class="pad" style="padding-top:8px">${l.map(s=>card(s)).join("")||empty(isLive()?t("No stories on this topic from the last {0} days. Refresh later, or explore another topic.",LIVE.windowDays):t("No sample stories for this topic in the prototype. The live app would fill it from verified sources."))}</div>`};
 V.moodfeed=()=>{const m=MOODS.find(x=>x[0]===S.p.m),l=STORIES.filter(s=>s.moods.includes(m[0]));return bar(t(m[1]))+`<div class="pad" style="padding-top:8px"><div class="banner"><span>${t("A temporary feed. Your preferences stay as they are.")}</span></div>${l.map(s=>card(s)).join("")}</div>`};
 function search(q){
   const stop=new Set(("good news positive from things thing happening in the about show me a of and has anything recently some what is are to "+((I18N.stop||{})[LANG]||"")).split(" "));
@@ -658,7 +710,7 @@ function mapSvg(sel){
   const pins=Object.entries(PLACES).map(([name,[lon,lat]])=>{const n=STORIES.filter(s=>s.country===name).length;return `<g class="pin ${sel===name?"on":""}" data-a="pin" data-c="${name}" tabindex="0" role="button" aria-label="${t(name)}: ${n}"><circle cx="${lon+180}" cy="${84-lat}" r="8"/><text x="${lon+180}" y="${86.4-lat}">${n}</text></g>`}).join("");
   return `<svg viewBox="0 0 360 144" role="img" aria-label="${t("Good News Map")}"><g class="land">${d}</g>${pins}</svg>`;
 }
-V.map=()=>{const sel=S.p.c||"Poland",l=STORIES.filter(s=>s.country===sel);
+V.map=()=>{const top=Object.keys(PLACES).sort((a,b)=>STORIES.filter(s=>s.country===b).length-STORIES.filter(s=>s.country===a).length)[0]||"Worldwide",sel=S.p.c&&(PLACES[S.p.c]||S.p.c==="Worldwide")?S.p.c:top,l=STORIES.filter(s=>s.country===sel);
  return bar(t("Good News Map"))+`<div class="pad" style="padding-top:8px"><p class="muted">${t("Positive things are happening everywhere. Tap a place.")}</p><div class="mapbox">${mapSvg(sel)}</div>
  <div class="hscroll">${Object.keys(PLACES).concat("Worldwide").map(c=>`<button class="chip" data-a="pin" data-c="${c}" aria-pressed="${sel===c}">${t(c)}</button>`).join("")}</div>
  <div class="eyebrow">${t(sel)} · ${t("Stories: {0}",l.length)}</div>${l.map(mini).join("")}</div>`};
@@ -674,12 +726,12 @@ V.sources=()=>{const f=S.prefs.sources,rest=SOURCES.filter(s=>!f.includes(s)&&!S
 
 V.weekly=()=>{
   const g=[["Environmental wins",["Environment & Nature","Conservation","World"]],["Science and health advances",["Science","Health & Medicine","Innovation","Space"]],["Wildlife recovery stories",["Animals"]],["Community stories",["Local Communities","Humanity & Community","Inspiring People"]]];
-  const countries=new Set(STORIES.map(s=>s.country).filter(c=>c!=="Worldwide")).size,open=S.p.g;
+  const W=isLive()?STORIES.filter(s=>(Date.now()-Date.parse(s.published||s.date))<=7*864e5):STORIES,countries=new Set(W.map(s=>s.country).filter(c=>c!=="Worldwide")).size,open=S.p.g;
   return bar(t("Weekly Perspective"))+`<div class="pad" style="padding-top:8px"><div><div class="eyebrow">${t("Your weekly summary")}</div><h1 style="font-size:30px;margin-top:4px">${t("This Week Wasn't All Bad")}</h1></div>
-  <p class="muted">${t("Counted from the {0} sample stories in this prototype, which span 2026. The live app would count one calendar week.",STORIES.length)}</p>
-  <div class="grid2">${g.map(([x,cs],i)=>{const n=STORIES.filter(s=>cs.includes(s.cat)).length;return `<button class="tile" data-a="wk" data-g="${i}" style="${open===i?"outline:2px solid var(--forest)":""}"><span class="n">${n}</span><span class="small">${t(x)}</span></button>`}).join("")}
+  <p class="muted">${(isLive()?t("Counted from {0} stories published in the last 7 days.",W.length):t("Counted from the {0} sample stories in this prototype, which span 2026. The live app would count one calendar week.",STORIES.length))}</p>
+  <div class="grid2">${g.map(([x,cs],i)=>{const n=W.filter(s=>cs.includes(s.cat)).length;return `<button class="tile" data-a="wk" data-g="${i}" style="${open===i?"outline:2px solid var(--forest)":""}"><span class="n">${n}</span><span class="small">${t(x)}</span></button>`}).join("")}
   <button class="tile wide" data-a="go" data-to="map">${ic("globe")}<span><b>${t("Positive developments from {0} countries",countries)}</b><br><span class="small muted">${t("Open the map")}</span></span></button></div>
-  ${open!=null?`<div class="eyebrow">${t(g[open][0])}</div>`+STORIES.filter(s=>g[open][1].includes(s.cat)).map(mini).join(""):`<p class="small muted">${t("Tap a number to see the stories behind it.")}</p>`}</div>`};
+  ${open!=null?`<div class="eyebrow">${t(g[open][0])}</div>`+W.filter(s=>g[open][1].includes(s.cat)).map(mini).join(""):`<p class="small muted">${t("Tap a number to see the stories behind it.")}</p>`}</div>`};
 
 V.profile=()=>{const r=S.read.map(byId),cnt=cs=>r.filter(s=>cs.includes(s.cat)).length,sci=cnt(["Science","Health & Medicine","Innovation","Space"]),env=cnt(["Environment & Nature","Conservation","World","Animals"]),hum=cnt(["Local Communities","Humanity & Community","Inspiring People"]);
  const dark=document.documentElement.classList.contains("dark");
@@ -760,6 +812,7 @@ const A={
   notif:d=>{S.notif[d.k]=d.v;render(1)},
   dark:()=>{document.documentElement.classList.toggle("dark");render(1)},
   toast:d=>toast(d.t),
+  refresh:()=>loadLive(true),
   ask:d=>{const r=ask(d.q);S.chat=(S.chat||[]).concat({me:d.q},r);render(1);const sc=$("screen");sc.scrollTop=sc.scrollHeight},
   askClear:()=>{S.chat=[];render(1)},
   jump:d=>{if(d.to==="dark")return A.dark();if(d.to==="good")return A.good();if(d.to==="lang")return A.langSheet();
@@ -790,6 +843,7 @@ function init(){
   });
   document.addEventListener("change",e=>{if(e.target.dataset&&e.target.dataset.c==="ntime"){S.notif.time=e.target.value||S.notif.time;render(1)}});
   render();
+  loadLive(false);
   setTimeout(()=>{if(S.screen==="splash")go("ob1",{},false)},2200);
 }
 init();

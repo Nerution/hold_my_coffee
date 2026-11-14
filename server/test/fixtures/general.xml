@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+ <title>Test Outlet B</title>
+ <entry>
+  <title>Test report: otters return to restored test river in Scotland</title>
+  <link rel="alternate" href="https://example.org/b/otters"/>
+  <id>tag:example.org,2026:otters</id>
+  <updated>2026-11-12T15:00:00Z</updated>
+  <summary type="html">&lt;p&gt;Fixture text. Otters have returned to a river in Scotland after a restoration project, a sign the ecosystem is recovering.&lt;/p&gt;</summary>
+  <author><name>Second Test Author</name></author>
+ </entry>
+ <entry>
+  <title>Test storm kills dozens and leaves thousands without power</title>
+  <link rel="alternate" href="https://example.org/b/storm"/>
+  <updated>2026-11-13T15:00:00Z</updated>
+  <summary>Fixture text. A deadly storm caused a disaster across the test region, officials warn of more damage.</summary>
+ </entry>
+ <entry>
+  <title>Test study looks at sediment layers in a lake</title>
+  <link rel="alternate" href="https://example.org/b/sediment"/>
+  <updated>2026-11-13T12:00:00Z</updated>
+  <summary>Fixture text. Researchers measured sediment layers in a lake to understand how it formed over time.</summary>
+ </entry>
+ <entry>
+  <title>Test scientists report breakthrough solar cell that sets efficiency record</title>
+  <link rel="alternate" href="https://example.org/b/solar"/>
+  <updated>2026-11-13T09:00:00Z</updated>
+  <summary>Fixture text. Researchers in Japan built a solar cell that sets a new efficiency record, a breakthrough that could improve clean energy.</summary>
+ </entry>
+</feed>
