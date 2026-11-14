@@ -30,9 +30,11 @@ To turn it on:
 
 Only links the model hasn't seen before are sent, so a refresh with no new stories costs nothing. The default model is `claude-opus-5-5` at low effort; set `GOOD_THINGS_MODEL` to use another.
 
-### Open it without the server
+### Other ways to open the app
 
-Opening `index.html` directly, or serving the folder with any static server, still works. The app then shows the bundled sample stories, and the home screen says so.
+You don't need a second window for the app: the news server already serves it at http://localhost:8787.
+
+If you open `index.html` directly, or serve the folder with another static server, the app looks for the news server at http://localhost:8787. If the news server is running, live news and Refresh work as usual. If it isn't, the app shows the bundled sample stories and the home screen says "news server not found".
 
 ## Settings
 

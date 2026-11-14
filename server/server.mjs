@@ -41,13 +41,15 @@ const publicView = (d, extra = {}) => d
   : { updatedAt: null, ai: null, sources: [], stories: [], ...extra };
 
 function send(res, code, body, type = "application/json; charset=utf-8") {
-  res.writeHead(code, { "content-type": type, "cache-control": "no-store", "x-content-type-options": "nosniff" });
+  // The API is readable from any page, so the app also works when it is opened as a file or from another local server.
+  res.writeHead(code, { "content-type": type, "cache-control": "no-store", "x-content-type-options": "nosniff", "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "accept, content-type" });
   res.end(typeof body === "string" || Buffer.isBuffer(body) ? body : JSON.stringify(body));
 }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   try {
+    if (req.method === "OPTIONS" && url.pathname.startsWith("/api/")) return send(res, 204, "");
     if (url.pathname === "/api/stories" && req.method === "GET") {
       if (!data) await refresh("first request");
       else if (age() > REFRESH_MINUTES * 60) refresh("cache older than " + REFRESH_MINUTES + " min"); // answer now, update in the background
