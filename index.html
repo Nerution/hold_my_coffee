@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Good Things App Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one phone-sized app frame, with a quiet reviewer's index beside it on wide screens. */
+:root{
+  --bg:#F6F2EA; --surface:#FFFDF8; --sunk:#EDE8DC; --line:#E0DACB;
+  --ink:#1D2B23; --muted:#66716A;
+  --sage:#DDE6D6; --sage-ink:#35513F; --forest:#1F3D2F; --on-forest:#F6F2EA;
+  --sun:#E2AE3A; --blue:#557891; --blue-soft:#E3EBF0;
+  --shadow:0 1px 2px rgba(31,61,47,.06),0 6px 18px rgba(31,61,47,.07);
+  --display:"Newsreader",Georgia,"Times New Roman",serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --page:#E9E4D8;
+  color-scheme:light;
+}
+:root.dark{
+  --bg:#111915; --surface:#19231E; --sunk:#141D18; --line:#2A372F;
+  --ink:#E9E6DC; --muted:#98A39B;
+  --sage:#25352C; --sage-ink:#B4CDB9; --forest:#A9CBB1; --on-forest:#10201A;
+  --sun:#E7BC58; --blue:#8FB0C6; --blue-soft:#1D2A33;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 18px rgba(0,0,0,.25);
+  --page:#0A0F0C;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--page);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0;text-align:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:6px}
+h1,h2,h3{font-family:var(--display);font-weight:500;text-wrap:balance;line-height:1.18;letter-spacing:-.005em}
+svg.ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+.stage{height:100%;display:flex;justify-content:center;align-items:center;gap:40px;padding:20px}
+.guide{width:250px;max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:14px;font-size:13.5px}
+.guide h1{font-size:25px}
+.guide p{color:var(--muted)}
+.guide ul{list-style:none;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:2px 10px}
+.guide li button{padding:5px 0;color:var(--sage-ink);text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.guide li button:hover{text-decoration-color:currentColor}
+.guide .note{border-top:1px solid var(--line);padding-top:12px;font-size:12.5px}
+
+.phone{position:relative;width:392px;height:min(830px,100%);background:var(--bg);border-radius:38px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 0 0 9px #18201b,0 24px 60px rgba(0,0,0,.28);flex:none}
+#screen{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+#screen::-webkit-scrollbar{display:none}
+@media (max-width:760px){
+  .stage{padding:0;gap:0}.guide{display:none}
+  .phone{width:100%;height:100%;border-radius:0;box-shadow:none}
+}
+
+/* shared */
+.pad{padding:18px 18px 28px;display:flex;flex-direction:column;gap:18px}
+.top{display:flex;align-items:center;gap:10px;padding:14px 14px 6px;position:sticky;top:0;background:var(--bg);z-index:3}
+.top h2{font-size:21px;flex:1}
+.iconbtn{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--ink)}
+.iconbtn:hover{background:var(--sunk)}
+.eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 20px;border-radius:14px;background:var(--forest);color:var(--on-forest);font-weight:600;width:100%}
+.btn.ghost{background:transparent;color:var(--forest);border:1.5px solid var(--line)}
+.btn.soft{background:var(--sage);color:var(--sage-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:9px 14px;border-radius:999px;border:1.5px solid var(--line);font-weight:500;font-size:14px;background:var(--surface)}
+.chip[aria-pressed="true"]{background:var(--forest);color:var(--on-forest);border-color:var(--forest)}
+.hscroll{display:flex;gap:8px;overflow-x:auto;margin:0 -18px;padding:0 18px 2px;scrollbar-width:none}
+.hscroll::-webkit-scrollbar{display:none}
+.hscroll .chip{white-space:nowrap;flex:none}
+.rows{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:14px 16px;width:100%;min-height:54px}
+.row + .row{border-top:1px solid var(--line)}
+.row .grow{flex:1;min-width:0}
+.row .sub{font-size:12.5px;color:var(--muted)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--sunk);border-radius:12px;padding:4px;gap:4px}
+.seg button{padding:9px 4px;border-radius:9px;text-align:center;font-weight:500;font-size:13.5px}
+.seg button[aria-pressed="true"]{background:var(--surface);box-shadow:var(--shadow)}
+.switch{width:44px;height:26px;border-radius:13px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}
+.switch[aria-checked="true"]{background:var(--forest)}
+.switch[aria-checked="true"]::after{transform:translateX(18px)}
+input[type=text],input[type=search],input[type=time]{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;width:100%;min-width:0}
+
+/* story card */
+.card{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;cursor:pointer;display:block}
+.art{position:relative;aspect-ratio:16/9;background:var(--sunk)}
+.art svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.tag{position:absolute;left:12px;bottom:12px;background:rgba(255,253,248,.94);color:#1F3D2F;font-size:11.5px;font-weight:600;letter-spacing:.04em;padding:5px 10px;border-radius:6px;border-left:3px solid var(--sun)}
+.cbody{padding:14px 16px 8px;display:flex;flex-direction:column;gap:7px}
+.cat{font-size:12px;font-weight:600;color:var(--sage-ink);letter-spacing:.03em}
+.card h3{font-size:20px}
+.card p{color:var(--muted);font-size:14px}
+.meta{font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.ai{font-size:10.5px;font-weight:600;letter-spacing:.05em;color:var(--blue);background:var(--blue-soft);padding:2px 7px;border-radius:5px;text-transform:uppercase}
+.acts{display:flex;border-top:1px solid var(--line);margin-top:6px}
+.acts button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 4px;font-size:13px;font-weight:500;color:var(--muted)}
+.acts button[aria-pressed="true"]{color:var(--forest)}
+.acts button[aria-pressed="true"] svg{fill:var(--sun);stroke:var(--sun)}
+.mini{display:flex;gap:12px;align-items:center;padding:10px;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);cursor:pointer;width:100%}
+.mini .art{width:84px;aspect-ratio:1;border-radius:11px;overflow:hidden;flex:none}
+.mini h3{font-size:16px}
+.outside{font-size:12px;color:var(--blue);font-weight:600}
+
+/* home */
+.hello h1{font-size:28px}
+.good{display:flex;align-items:center;gap:12px;padding:16px 18px;border-radius:18px;background:var(--forest);color:var(--on-forest);width:100%;font-weight:600;font-size:16.5px}
+.good svg{color:var(--sun);width:24px;height:24px}
+.good span{flex:1}
+.dose{background:var(--sage);color:var(--sage-ink);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:10px;width:100%}
+.dose strong{font-family:var(--display);font-size:19px;font-weight:500;color:var(--ink)}
+.pips{display:flex;gap:5px}
+.pips i{flex:1;height:5px;border-radius:3px;background:rgba(53,81,63,.2)}
+.pips i.on{background:var(--sage-ink)}
+.stop{text-align:center;padding:26px 20px;border-radius:20px;border:1.5px dashed var(--line);display:flex;flex-direction:column;gap:12px;align-items:center}
+.stop h3{font-size:22px}
+.leaf{width:44px;height:44px;border-radius:50%;background:var(--sage);color:var(--sage-ink);display:grid;place-items:center}
+
+/* nav */
+nav{display:grid;grid-template-columns:repeat(5,1fr);align-items:end;background:var(--surface);border-top:1px solid var(--line);padding:6px 6px 10px;flex:none}
+nav[hidden]{display:none}
+nav button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:var(--muted);padding:6px 0}
+nav button[aria-current="page"]{color:var(--forest)}
+nav .center{position:relative}
+nav .center .orb{width:54px;height:54px;border-radius:50%;background:var(--forest);color:var(--sun);display:grid;place-items:center;margin-top:-26px;box-shadow:0 0 0 5px var(--surface),var(--shadow)}
+nav .center .orb svg{width:26px;height:26px}
+
+/* onboarding + splash */
+.full{min-height:100%;display:flex;flex-direction:column;padding:26px 22px 24px;gap:20px}
+.full .spacer{flex:1}
+.full h1{font-size:34px}
+.full .lead{font-size:16.5px;color:var(--muted)}
+.steps{display:flex;gap:6px}
+.steps i{width:22px;height:4px;border-radius:2px;background:var(--line)}
+.steps i.on{background:var(--forest)}
+.splash{min-height:100%;display:grid;place-items:center;background:var(--forest);color:var(--on-forest);text-align:center;cursor:pointer}
+.splash h1{font-size:40px;margin-top:14px}
+.splash p{opacity:.8;margin-top:6px}
+.mark{width:72px;height:72px;margin:0 auto}
+.hero{border-radius:22px;overflow:hidden;aspect-ratio:4/3;position:relative}
+.hero svg{position:absolute;inset:0;width:100%;height:100%}
+.opt{display:flex;gap:14px;align-items:center;padding:16px;border-radius:16px;border:1.5px solid var(--line);background:var(--surface);width:100%}
+.opt[aria-pressed="true"]{border-color:var(--forest);background:var(--sage)}
+.opt b{display:block;font-size:16px}
+.opt .radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--muted);flex:none}
+.opt[aria-pressed="true"] .radio{border:6px solid var(--forest)}
+
+.region{display:flex;flex-direction:column;gap:8px}
+.rhead{display:flex;justify-content:space-between;align-items:center}
+.rhead button{font-size:13px;font-weight:600;color:var(--blue);padding:4px 0}
+.langbtn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:1.5px solid var(--line);font-size:13px;font-weight:600;background:var(--surface)}
+.langbtn svg{width:16px;height:16px}
+.guide .chips{gap:6px}.guide .chip{padding:5px 10px;font-size:12.5px}
+/* article */
+.article .art{aspect-ratio:4/3}
+.article .ph{position:absolute;right:10px;bottom:10px;font-size:10.5px;background:rgba(0,0,0,.45);color:#fff;padding:3px 7px;border-radius:5px}
+.article .floatbar{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;z-index:2}
+.article .floatbar .iconbtn{background:rgba(255,253,248,.92);color:#1D2B23}
+.article h1{font-size:27px}
+.byline{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.byline b{color:var(--ink);font-weight:600}
+.summary{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:14px}
+.summary h4{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--sage-ink);margin-bottom:3px}
+.summary p{font-size:15.5px;line-height:1.5}
+.sumhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.context{background:var(--blue-soft);color:var(--ink);border-radius:14px;padding:12px 14px;font-size:13.5px;border-left:3px solid var(--blue)}
+.also{display:flex;flex-wrap:wrap;gap:8px}
+.also a,.also span{font-size:13.5px;padding:7px 12px;border-radius:999px;border:1.5px solid var(--line);text-decoration:none;display:inline-flex;gap:6px;align-items:center}
+.also svg{width:14px;height:14px}
+.tune{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tune button{display:flex;gap:8px;align-items:center;padding:11px 12px;border-radius:12px;border:1.5px solid var(--line);font-size:13.5px;font-weight:500;background:var(--surface)}
+.tune button.wide{grid-column:1/-1}
+.tune button[aria-pressed="true"]{background:var(--sage);border-color:var(--sage-ink)}
+.tune svg{width:17px;height:17px}
+
+/* grids */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{padding:14px;border-radius:16px;background:var(--surface);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:4px;min-height:74px;justify-content:center}
+.tile b{font-weight:600}
+.tile .n{font-family:var(--display);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.tile.mood{background:var(--sage);box-shadow:none;color:var(--sage-ink)}
+.tile.wide{grid-column:1/-1;flex-direction:row;align-items:center;gap:12px;justify-content:flex-start}
+.banner{background:var(--blue-soft);border-radius:12px;padding:10px 14px;font-size:13px;display:flex;gap:10px;align-items:center}
+.banner span{flex:1}
+.banner button{font-weight:600;color:var(--blue);text-decoration:underline}
+.searchbar{display:flex;gap:8px}
+.searchbar button{width:48px;border-radius:12px;background:var(--forest);color:var(--on-forest);display:grid;place-items:center;flex:none}
+.mapbox{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);padding:10px}
+.mapbox svg{width:100%;display:block}
+.land{fill:var(--line)}
+.pin{cursor:pointer}
+.pin circle{fill:var(--forest);stroke:var(--surface);stroke-width:1.5}
+.pin.on circle{fill:var(--sun)}
+.pin text{font-size:6.5px;font-weight:700;fill:var(--on-forest);text-anchor:middle;font-family:var(--body)}
+.pin.on text{fill:#1D2B23}
+.avatar{width:64px;height:64px;border-radius:50%;background:var(--sage);color:var(--sage-ink);display:grid;place-items:center;font-family:var(--display);font-size:26px}
+.plan{border-radius:18px;padding:16px;background:var(--surface);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px}
+.plan.pro{border:1.5px solid var(--sun)}
+.plan ul{padding-left:18px;color:var(--muted);font-size:14px;display:grid;gap:3px}
+.notif{background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:12px 14px;display:flex;gap:12px}
+.notif .mark{width:34px;height:34px;margin:0;flex:none}
+
+/* sheet + toast */
+#sheet{position:absolute;inset:0;z-index:20;display:none;align-items:flex-end;background:rgba(10,20,15,.42)}
+#sheet.open{display:flex}
+.sheet{background:var(--bg);width:100%;border-radius:24px 24px 0 0;padding:18px 18px 24px;display:flex;flex-direction:column;gap:14px;max-height:80%;overflow:auto}
+.sheet h3{font-size:21px}
+#toast{position:absolute;left:50%;bottom:92px;transform:translateX(-50%);background:#1D2B23;color:#F6F2EA;padding:10px 16px;border-radius:999px;font-size:13.5px;z-index:30;opacity:0;pointer-events:none;transition:opacity .25s;max-width:86%;text-align:center}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="stage">
+  <aside class="guide" aria-label="Prototype index">
+    <div class="eyebrow">Clickable prototype</div>
+    <h1>Good Things</h1>
+    <p>Working title. Tap through the phone, or jump straight to a screen.</p>
+    <div class="eyebrow">App language</div>
+    <div class="chips" id="langs"></div>
+    <ul id="guide"></ul>
+    <p class="note muted">Every story is real and links to its publisher. Summaries were written by AI from those sources. Pictures are drawn placeholders, standing in for licensed editorial photography.</p>
+  </aside>
+  <div class="phone">
+    <div id="screen"></div>
+    <nav id="nav" hidden></nav>
+    <div id="sheet"></div>
+    <div id="toast" role="status"></div>
+  </div>
+</div>
+<script src="i18n.js"></script>
+<script>
+(function(){
+"use strict";
+const I18N=window.I18N;
+/* ---------- content: real stories, each linked to its publisher ---------- */
+const STORIES=[
+{id:"amazon",cat:"Environment & Nature",tag:"Good Trend",art:"forest",country:"Brazil",w:1,read:4,
+ title:"Amazon deforestation in Brazil falls to its lowest level since records began in 1988",
+ sum:"Official satellite data show 3,335 sq km cleared in the year to July 2026, the smallest annual figure on record.",
+ what:"Brazil's government reported that annual deforestation in the Amazon dropped to the lowest level since monitoring started in 1988. Satellite data put the loss at 3,335 square kilometres between August 2025 and July 2026.",
+ why:"The Amazon stores enormous amounts of carbon, and deforestation is Brazil's largest source of greenhouse gas emissions. Al Jazeera reports the figure is 42% lower than a year earlier.",
+ bigger:"Experts quoted in the coverage call the gains fragile. A strong El Niño could bring hotter, drier conditions and more wildfires, and forest policy could still change.",
+ source:"Associated Press",url:"https://www.ksat.com/news/world/2026/10/16/brazil-says-amazon-deforestation-fell-to-the-lowest-level-since-1988/",date:"2026-10-16",
+ also:[["Al Jazeera","https://www.aljazeera.com/news/2026/10/17/brazils-amazon-deforestation-hits-lowest-level-on-record"]],
+ kw:"rainforest forest environment environmental climate south america trees",moods:["hope","world"]},
+{id:"coal",cat:"World",tag:"Good Trend",art:"energy",country:"Worldwide",w:.9,read:3,
+ title:"Renewables generated more of the world's electricity than coal in 2025",
+ sum:"Ember's Global Electricity Review 2026 puts renewables at 33.8% of global electricity, just ahead of coal at 33.0%.",
+ what:"According to Ember's Global Electricity Review 2026, renewable sources supplied 33.8% of the world's electricity in 2025, edging past coal at 33.0%.",
+ why:"Coal had held the top spot for about a century. Solar growth was a major driver of the change.",
+ bigger:"The margin is narrow. Pew notes that power-sector emissions fell only slightly in 2025, by 0.04%, so the shift is real and still early.",
+ source:"The Cool Down",author:"Nick Paschal",url:"https://www.thecooldown.com/?p=700947",date:"2026-05-13",
+ also:[["Pew","https://www.pew.org/en/research-and-analysis/articles/2026/07/14/renewable-energy-sets-global-record"]],
+ kw:"renewable energy solar wind power climate environment environmental progress global",moods:["hope","progress","world"]},
+{id:"irena",cat:"Innovation",tag:"Progress",art:"energy",country:"Worldwide",w:.6,read:4,
+ title:"World added a record 692 GW of renewable power capacity in 2025",
+ sum:"IRENA figures show renewables now make up 49% of global installed power capacity, with solar providing about three quarters of the additions.",
+ what:"The International Renewable Energy Agency's Renewable Capacity Statistics 2026 counts 692 GW of new renewable capacity in 2025, taking the global total to about 5.1 terawatts.",
+ why:"That brings renewables to 49% of all installed power capacity worldwide. Solar alone added 511 GW and wind 159 GW.",
+ bigger:"The picture is uneven. Asia accounted for about 74% of the new capacity, and fossil-fuel capacity also grew during the year.",
+ source:"Impakter",author:"Fedor Sukhoi",url:"https://impakter.com/half-of-the-worlds-power-capacity-is-now-renewable/",date:"2026-04-03",
+ also:[["The National","https://www.thenationalnews.com/business/energy/2026/04/01/renewable-energy-capacity-in-record-rise-last-year-with-war-set-to-increase-focus-on-sector"],["PV Tech","https://www.pv-tech.org/irena-world-adds-510gw-of-new-solar-pv-capacity-in-2025/"]],
+ kw:"renewable energy solar wind power technology progress global asia",moods:["amazing","progress","world"]},
+{id:"turtle",cat:"Conservation",tag:"Recovery",art:"ocean",country:"Worldwide",w:.8,read:2,
+ title:"Green sea turtle moves from Endangered to Least Concern on the IUCN Red List",
+ sum:"The latest Red List update credits decades of sustained conservation work for the improvement.",
+ what:"In its latest Red List update, the IUCN improved the status of the green sea turtle from Endangered to Least Concern.",
+ why:"A change of that size is rare. The IUCN attributes it to decades of sustained conservation action.",
+ bigger:"Specialists in the IUCN's marine turtle group stress that continued effort is needed for the recovery to last.",
+ source:"Conservation Optimism",url:"https://conservationoptimism.org/7-stories-of-optimism-this-week-05-01-26-12-01-26/",date:"2026-01-12",
+ also:[["ABC News","https://www.goodmorningamerica.com/news/story/earth-day-2026-planet-experienced-environmental-wins-recent-132069519"]],
+ kw:"animal animals ocean sea marine wildlife extinction recovering endangered species environment environmental",moods:["hope","animals","world","calm"]},
+{id:"horse",cat:"Animals",tag:"Conservation Success",art:"plains",country:"Kazakhstan",w:.5,read:2,
+ title:"Przewalski's horses return to Kazakhstan after two centuries",
+ sum:"A reintroduction effort credited to Prague Zoo has brought the wild horse back to the Kazakh steppe.",
+ what:"Przewalski's horses have been returned to Kazakhstan, about two centuries after the species disappeared from the country.",
+ why:"Bringing a species back to its former range is among the hardest things conservation attempts. Coverage credits the Prague Zoo team for the project.",
+ bigger:"A return is a beginning. Reintroduced herds are usually monitored for years before a population counts as established.",
+ source:"Conservation Optimism",url:"https://conservationoptimism.org/7-stories-of-optimism-this-week-05-01-26-12-01-26/",date:"2026-01-12",also:[],
+ kw:"animal animals wildlife extinction recovering species asia steppe zoo",moods:["amazing","animals"]},
+{id:"pancreatic",cat:"Health & Medicine",tag:"Breakthrough",art:"lab",country:"Worldwide",w:.7,read:4,serious:1,
+ title:"Experimental drug nearly doubles survival in a late-stage pancreatic cancer trial",
+ sum:"Phase 3 results for daraxonrasib met both main goals in patients whose cancer had already been treated.",
+ what:"Revolution Medicines announced positive topline results from RASolute 302, a global Phase 3 trial of daraxonrasib in people with previously treated metastatic pancreatic cancer. Overall survival was nearly doubled.",
+ why:"The trial met both of its main endpoints, progression-free survival and overall survival. Leading investigators described the results as unprecedented for a Phase 3 trial in this disease.",
+ bigger:"These are topline results announced by the company, with full data going to a medical meeting. A trial in newly diagnosed patients is already under way.",
+ source:"Life Science Daily News",url:"https://lifesciencedaily.news/?p=8113",date:"2026-04-17",also:[],
+ kw:"medical medicine health cancer treatment breakthrough breakthroughs trial drug",moods:["hope","progress"]},
+{id:"bialowieza",cat:"Conservation",tag:"Progress",art:"forest",country:"Poland",w:.6,read:3,
+ title:"Poland adopts a 25-year protection plan for the Białowieża Forest",
+ sum:"The management plan, reviewed by UNESCO and the IUCN, sets conservation priorities for the ancient forest through 2051.",
+ what:"Poland's environment minister signed a management plan for the Polish part of the Białowieża Forest on 19 June 2026, after it was submitted to UNESCO's World Heritage Centre and the IUCN.",
+ why:"The plan sets conservation priorities for the next 25 years, and its provisions will feed into future forest management plans.",
+ bigger:"The praise from UNESCO is reported by the Polish government. Poland still has to file a conservation status report, and another monitoring mission is planned.",
+ source:"Polskie Radio",author:"PAP",url:"https://polskieradio.pl/395/7784/Artykul/3712592,unesco-praises-poland%E2%80%99s-efforts-to-protect-ancient-forest-govt",date:"2026-07-25",
+ also:[["Gov.pl","https://www.gov.pl/web/climate/unesco-commends-polands-efforts-to-protect-the-bialowieza-forest"]],
+ kw:"forest environment environmental nature europe polska unesco bison",moods:["calm"]},
+{id:"forests",cat:"Local Communities",tag:"Community Win",art:"town",country:"Poland",w:.4,read:3,
+ title:"Poland opens the first of 11 planned community forests around major cities",
+ sum:"The forests are meant to give city residents a place for recreation and contact with nature.",
+ what:"Poland's climate and environment ministry inaugurated the first of 11 planned community forests around large cities.",
+ why:"The aim is to give residents nearby space for recreation and contact with nature.",
+ bigger:"Ten more are planned around other large cities.",
+ source:"Notes from Poland",url:"https://notesfrompoland.com/2026/07/22/poland-launches-first-of-11-planned-community-forests-around-major-cities/",date:"2026-07-22",also:[],
+ kw:"forest city cities nature environment environmental europe polska local community",moods:["faith","calm"]},
+{id:"starship",cat:"Space",tag:"Progress",art:"space",country:"United States",w:.7,read:3,
+ title:"Starship reaches Earth orbit for the first time",
+ sum:"The 14th test flight achieved orbit on 28 September, a step toward the vehicle NASA plans to use for Moon landings.",
+ what:"SpaceX's Starship reached Earth orbit for the first time on its 14th test flight, on 28 September 2026.",
+ why:"Starship is intended to carry astronauts to the lunar surface as soon as 2028. Reaching orbit lets testing move on to docking and refuelling in space.",
+ bigger:"The flight was far from flawless. It was cut short and the vehicle was lost on its return, so much remains to be demonstrated.",
+ source:"EarthSky",url:"https://earthsky.org/spaceflight/spacex-starship-reaches-earths-orbit-for-1st-time/",date:"2026-09-29",
+ also:[["Live Science","https://www.livescience.com/space/space-exploration/spacexs-starship-reaches-orbit-for-the-first-time-then-returns-early-and-blows-up-in-a-fiery-explosion"]],
+ kw:"rocket moon nasa spacex exploration technology america usa",moods:["amazing","progress"]},
+{id:"rhino",cat:"Animals",tag:"Conservation Success",art:"plains",country:"South Africa",w:.5,read:2,
+ title:"KwaZulu-Natal records a month without a single rhino poached",
+ sum:"The South African province reported zero rhino poaching incidents in January 2026.",
+ what:"The South African province of KwaZulu-Natal recorded zero rhino poaching incidents in January 2026.",
+ why:"The report describes it as a rare and significant achievement for rhino protection.",
+ bigger:"One month is not yet a trend. It is a marker to hold against the figures for the rest of the year.",
+ source:"Getaway",author:"Miriam Kimvangu",url:"https://www.getaway.co.za/wildlife/wildlife-roundup-a-week-of-wins-for-across-the-globe/",date:"2026-04-10",also:[],
+ kw:"animal animals wildlife africa poaching species endangered",moods:["animals"]},
+{id:"bilby",cat:"Animals",tag:"Recovery",art:"plains",country:"Australia",w:.4,read:2,
+ title:"Greater bilby numbers grow from 50 to more than 1,800 in a protected reserve",
+ sum:"A fenced, predator-free reserve in Australia has allowed the reintroduced marsupial to multiply.",
+ what:"A conservation project in Australia has grown a greater bilby population from 50 animals to more than 1,800.",
+ why:"The animals live in a fenced reserve designed to keep out invasive predators, which gave the reintroduction room to succeed.",
+ bigger:"The growth happened behind a fence. It shows what protection can do, and it is different from recovery in open country.",
+ source:"Getaway",author:"Miriam Kimvangu",url:"https://www.getaway.co.za/wildlife/wildlife-roundup-a-week-of-wins-for-across-the-globe/",date:"2026-04-10",also:[],
+ kw:"animal animals wildlife extinction recovering species marsupial oceania",moods:["smile","animals"]},
+{id:"salmon",cat:"Conservation",tag:"Recovery",art:"ocean",country:"United States",w:.5,read:3,
+ title:"Most protected Pacific Coast salmon populations have grown since being listed",
+ sum:"NOAA Fisheries reports that most threatened and endangered salmon populations on the Pacific Coast increased after gaining legal protection.",
+ what:"NOAA Fisheries reports that most threatened and endangered Pacific Coast salmon populations increased after they were listed under the Endangered Species Act.",
+ why:"The agency says the protections are moving salmon toward recovery.",
+ bigger:"NOAA is clear that endangered species still face many threats, and that only some are showing signs of recovery.",
+ source:"NOAA Fisheries",url:"https://www.fisheries.noaa.gov/feature-story/good-news-stories-endangered-species-day-2026",date:"2026-05-15",also:[],
+ kw:"animal animals fish river ocean wildlife recovering endangered species environment environmental america usa",moods:["animals","calm"]},
+{id:"helena",cat:"Humanity & Community",tag:"Community Win",art:"town",country:"United States",w:.4,read:2,
+ title:"Nearly 200 volunteers repair 18 homes for elderly, disabled and veteran residents",
+ sum:"United Way's Spirit of Service day in Helena brought neighbours together for yard work, repairs and clean-ups.",
+ what:"Nearly 200 volunteers worked on 18 homes across Helena during United Way's Spirit of Service 2026.",
+ why:"They mowed yards, filled driveway cracks and hauled away truckloads of rubbish for residents who could not do the work themselves.",
+ bigger:"This is a small, local story told by the local chamber of commerce. Days like it happen in many towns and rarely make the news.",
+ source:"Helena Chamber",url:"https://helenachamber.com/2026/05/20/success-at-spirit-of-service-2026-with-united-way/",date:"2026-05-20",also:[],
+ kw:"community volunteers neighbours neighbors kindness charity local america usa",moods:["smile","faith"]},
+{id:"lawn",cat:"Inspiring People",tag:"Human Kindness",art:"town",country:"United States",w:.4,read:2,
+ title:"A neighbour asks for help with a 98-year-old's lawn, and a community answers",
+ sum:"A Facebook post about an overgrown yard ended with the grass cut and a crowd gathering to say thank you.",
+ what:"It began with a neighbour's Facebook post about a 98-year-old man's overgrown lawn. A lawn company took on the job, and the station's Surprise Squad later turned up with the community to say thanks.",
+ why:"Nobody involved was asked twice. One of the people who mowed said the man stood up and gave two thumbs up when the work was done.",
+ bigger:"It is one street in Atlanta, reported by a local TV station. Its value is as a reminder of how ordinary this kind of help is.",
+ source:"Atlanta News First",url:"https://www.atlantanewsfirst.com/2026/08/07/lawn-company-surprises-neighbor-who-mowed-98-year-old-mans-yard-after-facebook-post/",date:"2026-08-07",also:[],
+ kw:"community neighbours neighbors kindness elderly local america usa people",moods:["smile","faith"]},
+{id:"senomac",cat:"Science",tag:"Scientific Discovery",art:"lab",country:"Worldwide",w:.5,read:4,serious:1,
+ title:"Long-term data show many breast cancer patients can safely skip a major lymph node operation",
+ sum:"Results from the Phase 3 SENOMAC trial indicate that leaving out axillary lymph node dissection is safe and better for patients.",
+ what:"Long-term data from the Phase 3 SENOMAC trial, published in the Journal of Clinical Oncology, show that skipping axillary lymph node dissection is safe.",
+ why:"The operation can leave patients with lasting loss of function. The report says avoiding it is meaningfully better for them.",
+ bigger:"The finding applies to the group of patients studied in the trial. Treatment decisions remain individual.",
+ source:"GeneOnline",author:"Bernice Lottering",url:"https://www.geneonline.com/the-cancer-trial-results-that-could-change-care-for-millions/",date:"2026-06-22",also:[],
+ kw:"medical medicine health cancer treatment research trial surgery breakthrough breakthroughs",moods:["progress"]},
+{id:"comp360",cat:"Health & Medicine",tag:"Progress",art:"lab",country:"Worldwide",w:.3,read:3,serious:1,
+ title:"Psilocybin-based treatment shows a lasting effect on hard-to-treat depression in a Phase 3 trial",
+ sum:"26-week results for COMP360 point to a rapid and durable antidepressant effect in treatment-resistant depression.",
+ what:"Compass Pathways reported 26-week results from its second Phase 3 trial of COMP360, a synthetic form of psilocybin, in patients with treatment-resistant depression.",
+ why:"The findings confirm a rapid onset and a durable effect, building on results from the first Phase 3 trial.",
+ bigger:"The results were announced by the company developing the treatment. Independent review of the full data matters before drawing firm conclusions.",
+ source:"Life Science Daily News",url:"https://lifesciencedaily.news/?p=10941",date:"2026-07-10",also:[],
+ kw:"medical medicine health mental depression treatment research trial breakthroughs",moods:["progress"]}
+];
+const byId=id=>STORIES.find(s=>s.id===id);
+const CATS=["Environment & Nature","Science","Health & Medicine","Technology","Animals","World","Humanity & Community","Space","Culture","Education","Sports","Business & Economy","Local Communities","Innovation","Inspiring People","Conservation"];
+const SOURCES=[...new Set(STORIES.map(s=>s.source))].concat(["Reuters","BBC News"]);
+const MOODS=[["hope","Give me hope"],["smile","Make me smile"],["amazing","Show me something amazing"],["faith","Restore my faith in humanity"],["progress","Show me progress"],["animals","Show me animals"],["world","Show me the world getting better"],["calm","Give me something calm"]];
+const REGIONS={"Europe":["Poland","Germany","France","United Kingdom","Spain","Italy","Sweden","Ukraine"],"Americas":["United States","Canada","Mexico","Brazil","Argentina"],"Africa":["South Africa","Kenya","Nigeria","Ethiopia","Egypt"],"Asia":["Kazakhstan","Japan","India","China","Indonesia"],"Oceania":["Australia","New Zealand"]};
+const PLACES={"Brazil":[-58,-6],"Poland":[20,52],"Kazakhstan":[67,48],"South Africa":[29,-29],"Australia":[134,-25],"United States":[-98,39]};
+
+/* ---------- state (in memory for this session) ---------- */
+const S={screen:"splash",p:{},stack:[],tab:"home",
+ prefs:{cats:new Set(["Environment & Nature","Science","Animals","Space"]),sources:["Associated Press","NOAA Fisheries"],regions:new Set(),amount:5},
+ cols:[{name:"Saved",ids:[]},{name:"Things that give me hope",ids:[]},{name:"Read later",ids:[]}],
+ read:[],like:{},hidden:new Set(),muted:new Set(),extra:0,lastGood:null,
+ notif:{freq:"Daily",time:"08:00",scope:"My topics"}};
+
+/* ---------- helpers ---------- */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=d=>new Date(d+"T12:00:00Z").toLocaleDateString(LOC[LANG],{day:"numeric",month:"short",year:"numeric"});
+const IC={home:"M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1z",search:"M11 4a7 7 0 1 0 0 14a7 7 0 0 0 0-14zM20 20l-3.8-3.8",
+ spark:"M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7z",
+ bookmark:"M6 4h12v17l-6-4-6 4z",user:"M12 12a4 4 0 1 0 0-8a4 4 0 0 0 0 8zM4 21c1-4 4.5-6 8-6s7 2 8 6",
+ share:"M12 15V4M8 8l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7",star:"M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9 6.8 19.7l1-5.9L3.5 9.7l5.9-.8z",
+ back:"M15 5l-7 7 7 7",close:"M6 6l12 12M18 6L6 18",check:"M5 12.5l4.5 4.5L19 7.5",up:"M6 15l6-6 6 6",down:"M6 9l6 6 6-6",
+ globe:"M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18",bell:"M6 17v-6a6 6 0 0 1 12 0v6l1.5 2h-15zM10 21h4",
+ sliders:"M4 7h10M18 7h2M4 17h2M10 17h10M16 5v4M8 15v4",moon:"M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z",plus:"M12 5v14M5 12h14",minus:"M5 12h14",
+ hide:"M4 4l16 16M10 6.2A9.6 9.6 0 0 1 12 6c5 0 8.5 4 9.5 6-.4.9-1.3 2.2-2.6 3.4M6.5 7.8C4.6 9 3.2 10.7 2.5 12c1 2 4.5 6 9.5 6 1.3 0 2.5-.3 3.6-.7",
+ chev:"M9 5l7 7-7 7",clock:"M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM12 7v5l3 2",chart:"M5 20V10M12 20V4M19 20v-7",
+ ext:"M14 5h5v5M19 5l-8 8M11 6H6a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-5",leaf:"M5 19c0-9 5-14 14-14 0 9-5 14-14 14zM5 19l8-8",crown:"M4 18h16M5 15l-1-8 5 4 3-6 3 6 5-4-1 8z"};
+const ic=n=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
+const MARK=`<svg class="mark" viewBox="0 0 72 72" aria-hidden="true"><circle cx="36" cy="38" r="15" fill="#E2AE3A"/><path d="M4 46c12-9 22-9 32 0s20 9 32 0v26H4z" fill="#DDE6D6"/><path d="M4 56c12-8 22-8 32 0s20 8 32 0v16H4z" fill="#8FAE96"/></svg>`;
+
+/* drawn placeholder imagery, one scene per subject */
+function art(kind){
+  const o=`<svg viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Illustration placeholder">`;
+  if(kind==="forest"){let t="";for(let i=0;i<9;i++){const x=20+i*46,h=46+(i*37%30);t+=`<path d="M${x} 214l16-${h} 16 ${h}z" fill="#24493A"/>`}
+    return o+`<rect width="400" height="240" fill="#DDE7D9"/><circle cx="300" cy="70" r="30" fill="#E2AE3A" opacity=".85"/><path d="M0 150q100-60 200-20t200-30v140H0z" fill="#A9BFA6"/><path d="M0 185q110-50 210-15t190-25v95H0z" fill="#6C9175"/><path d="M0 210q120-20 400-6v36H0z" fill="#2F5A45"/>${t}</svg>`}
+  if(kind==="ocean")return o+`<rect width="400" height="240" fill="#DFE9EC"/><circle cx="95" cy="72" r="28" fill="#E2AE3A" opacity=".8"/><path d="M0 120q50-18 100 0t100 0 100 0 100 0v120H0z" fill="#9DBBC8"/><path d="M0 155q50-18 100 0t100 0 100 0 100 0v85H0z" fill="#6A8FA6"/><path d="M0 192q50-16 100 0t100 0 100 0 100 0v48H0z" fill="#3F647C"/><path d="M236 138q26-26 56-6-30 14-56 6z" fill="#35513F"/></svg>`;
+  if(kind==="energy"){let p="";for(let i=0;i<5;i++)p+=`<path d="M${30+i*72} 226l22-40h48l-22 40z" fill="#3F647C"/><path d="M${54+i*72} 186l-22 40M${78+i*72} 186l-22 40" stroke="#DFE9EC" stroke-width="1.5"/>`;
+    return o+`<rect width="400" height="240" fill="#F3E9D2"/><circle cx="200" cy="96" r="46" fill="#E2AE3A"/><path d="M0 172q100-40 200-12t200-22v102H0z" fill="#A9BFA6"/><path d="M330 172V84M330 84l-26-12M330 84l24-16M330 84l4 30" stroke="#F8F5EE" stroke-width="4" stroke-linecap="round" fill="none"/>${p}</svg>`}
+  if(kind==="space"){let s="";for(let i=0;i<46;i++)s+=`<circle cx="${(i*83)%400}" cy="${(i*47)%190}" r="${i%5?1:1.8}" fill="#F3E9D2" opacity="${.35+(i%4)*.18}"/>`;
+    return o+`<rect width="400" height="240" fill="#15232D"/>${s}<path d="M-20 240q220-110 440 0z" fill="#557891"/><path d="M-20 240q220-84 440 0z" fill="#6C9175" opacity=".55"/><path d="M92 190q100-90 196-122" stroke="#E2AE3A" stroke-width="2.5" fill="none" stroke-dasharray="2 7" stroke-linecap="round"/><path d="M288 68l14-12-4 18z" fill="#F8F5EE"/></svg>`}
+  if(kind==="town"){const c=["#C9B592","#A9BFA6","#D9C9A8","#8FAE96","#C9B592"];let h="";for(let i=0;i<5;i++){const x=18+i*76,t=120+(i*29%34);h+=`<rect x="${x}" y="${t}" width="58" height="${214-t}" fill="${c[i]}"/><path d="M${x-6} ${t}l35-26 35 26z" fill="#35513F"/><rect x="${x+22}" y="${t+16}" width="14" height="16" fill="#F8F5EE" opacity=".8"/>`}
+    return o+`<rect width="400" height="240" fill="#F0E8D8"/><circle cx="330" cy="58" r="24" fill="#E2AE3A" opacity=".85"/>${h}<rect y="212" width="400" height="28" fill="#6C9175"/></svg>`}
+  if(kind==="plains"){let g="";for(let i=0;i<26;i++)g+=`<path d="M${8+i*15.5} 236q3-${14+i%4*5} 8-${22+i%3*6}" stroke="#7E8F55" stroke-width="2" fill="none"/>`;
+    return o+`<rect width="400" height="240" fill="#EFE4CB"/><circle cx="118" cy="92" r="38" fill="#E2AE3A" opacity=".9"/><path d="M0 150q120-34 240-10t160-18v118H0z" fill="#CDBB86"/><path d="M0 190q140-30 400-10v60H0z" fill="#A8AE74"/><path d="M286 134l10-30 6 30z" fill="#35513F"/><path d="M268 140q28-26 60 0z" fill="#35513F"/>${g}</svg>`}
+  let c="";[[90,80,44],[220,130,58],[320,70,30],[150,190,26],[340,180,40]].forEach(([x,y,r],i)=>c+=`<circle cx="${x}" cy="${y}" r="${r}" fill="${i%2?"#A9BFA6":"#557891"}" opacity=".55"/><circle cx="${x}" cy="${y}" r="${r*.38}" fill="${i%2?"#35513F":"#E2AE3A"}" opacity=".8"/>`);
+  return o+`<rect width="400" height="240" fill="#E4ECEA"/>${c}</svg>`;
+}
+
+/* ---------- personalisation ---------- */
+function ranked(){
+  const p=S.prefs;
+  const score=s=>(p.cats.has(s.cat)?3:0)+(p.sources.includes(s.source)?1:0)+(p.regions.has(s.country)?2:0)+(S.like[s.cat]||0)-(S.muted.has(s.cat)?4:0)+s.w;
+  const list=STORIES.filter(s=>!S.hidden.has(s.source)).map(s=>[score(s),s]).sort((a,b)=>b[0]-a[0]||b[1].date.localeCompare(a[1].date)).map(x=>x[1]);
+  // keep the feed from narrowing: lift one story from outside the chosen topics into the first few
+  let outside=null;const i=list.findIndex(s=>!p.cats.has(s.cat)&&!S.muted.has(s.cat));
+  if(i>-1){outside=list[i].id;if(i>2){const [x]=list.splice(i,1);list.splice(2,0,x)}}
+  return {list,outside};
+}
+const doseSize=()=>S.prefs.amount==="explorer"?10:S.prefs.amount;
+const doseList=()=>ranked().list.slice(0,doseSize());
+const saved=id=>S.cols[0].ids.includes(id);
+const anySaved=id=>S.cols.some(c=>c.ids.includes(id));
+const following=src=>S.prefs.sources.includes(src);
+function markRead(id){if(!S.read.includes(id))S.read.push(id)}
+
+/* ---------- language ---------- */
+const LOC={en:"en-GB",pl:"pl-PL",de:"de-DE",es:"es-ES"};
+let LANG="en";
+const t=(k,...a)=>{const s=(LANG!=="en"&&I18N.ui[LANG]&&I18N.ui[LANG][k])||k;return s.replace(/\{(\d)\}/g,(m,i)=>a[i])};
+const st=(s,f)=>(LANG!=="en"&&I18N.stories[LANG]&&I18N.stories[LANG][s.id]&&I18N.stories[LANG][s.id][f])||s[f]||"";
+
+/* ---------- components ---------- */
+function card(s,note){
+  return `<article class="card" tabindex="0" data-a="open" data-id="${s.id}">
+  <div class="art">${art(s.art)}<span class="tag">${t(s.tag)}</span></div>
+  <div class="cbody">${note?`<div class="outside">${note}</div>`:""}
+   <div class="cat">${esc(t(s.cat))} · ${t(s.country)}</div><h3>${esc(st(s,"title"))}</h3><p>${esc(st(s,"sum"))}</p>
+   <div class="meta"><span>${esc(s.source)}</span><span>${fmt(s.date)}</span><span>${t("{0} min read",s.read)}</span><span class="ai">${t("AI summary")}</span></div></div>
+  <div class="acts">
+   <button data-a="save" data-id="${s.id}" aria-pressed="${saved(s.id)}">${ic("bookmark")}${saved(s.id)?t("Saved"):t("Save")}</button>
+   <button data-a="follow" data-src="${esc(s.source)}" aria-pressed="${following(s.source)}">${ic("star")}${following(s.source)?t("Following"):t("Source")}</button>
+   <button data-a="share" data-id="${s.id}">${ic("share")}${t("Share")}</button></div></article>`;
+}
+const mini=s=>`<button class="mini" data-a="open" data-id="${s.id}"><span class="art">${art(s.art)}</span><span><span class="cat">${esc(t(s.cat))} · ${t(s.country)}</span><h3>${esc(st(s,"title"))}</h3><span class="meta">${esc(s.source)} · ${fmt(s.date)}</span></span></button>`;
+const bar=(title,right="")=>`<div class="top"><button class="iconbtn" data-a="back" aria-label="${t("Back")}">${ic("back")}</button><h2>${title}</h2>${right}</div>`;
+const empty=x=>`<p class="muted" style="text-align:center;padding:26px 10px">${x}</p>`;
+function regionPicker(){
+  const r=S.prefs.regions;
+  return Object.entries(REGIONS).map(([name,cs])=>{const all=cs.every(c=>r.has(c));
+    return `<div class="region"><div class="rhead"><span class="eyebrow">${t(name)}</span><button data-a="regionAll" data-r="${name}">${all?t("Clear"):t("Select all")}</button></div><div class="chips">${cs.map(c=>`<button class="chip" data-a="region" data-c="${c}" aria-pressed="${r.has(c)}">${t(c)}</button>`).join("")}</div></div>`}).join("");
+}
+const regionLine=()=>{const r=[...S.prefs.regions].map(c=>t(c));return r.length?r.slice(0,3).join(", ")+(r.length>3?` +${r.length-3}`:""):t("Everywhere")};
+const langBtn=()=>`<button class="langbtn" data-a="langSheet" aria-label="${t("Language")}">${ic("globe")}${I18N.langs[LANG]}</button>`;
+
+/* ---------- screens ---------- */
+const V={};
+V.splash=()=>`<div class="splash" data-a="go" data-to="ob1"><div>${MARK}<h1>Good Things</h1><p>${t("Good things are happening too.")}</p></div></div>`;
+const steps=n=>`<div class="steps">${[1,2,3,4,5].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</div>`;
+V.ob1=()=>`<div class="full"><div class="rhead">${steps(1)}${langBtn()}</div><div class="hero">${art("forest")}</div><h1>${t("The world isn't only bad news.")}</h1><p class="lead">${t("Discover real positive developments happening every day, from sources you can check.")}</p><div class="spacer"></div><button class="btn" data-a="go" data-to="ob2">${t("Continue")}</button></div>`;
+V.ob2=()=>`<div class="full">${steps(2)}<h1>${t("What gives you hope?")}</h1><p class="lead">${t("Pick a few topics. You'll still see the occasional story from outside them.")}</p>
+ <div class="chips">${CATS.map(c=>`<button class="chip" data-a="cat" data-c="${esc(c)}" aria-pressed="${S.prefs.cats.has(c)}">${esc(t(c))}</button>`).join("")}</div>
+ <div class="spacer"></div><button class="btn" data-a="go" data-to="ob3">${t("Continue")}</button></div>`;
+V.ob3=()=>`<div class="full">${steps(3)}<h1>${t("Choose sources you trust")}</h1><p class="lead">${t("Optional. Their stories get a slight lift in your feed.")}</p>
+ <div class="chips">${SOURCES.map(c=>`<button class="chip" data-a="follow" data-src="${esc(c)}" aria-pressed="${following(c)}">${esc(c)}</button>`).join("")}</div>
+ <div class="spacer"></div><button class="btn" data-a="go" data-to="obr">${t("Continue")}</button><button class="btn ghost" data-a="go" data-to="obr">${t("Skip for now")}</button></div>`;
+V.obr=()=>`<div class="full">${steps(4)}<h1>${t("Where should good news come from?")}</h1><p class="lead">${t("Optional. Stories from the countries you pick appear more often. Worldwide stories always stay in.")}</p>${regionPicker()}<div class="spacer"></div><button class="btn" data-a="go" data-to="ob4">${S.prefs.regions.size?t("Continue"):t("Continue with everywhere")}</button></div>`;
+const amounts=()=>[[5,"Quick dose","5 stories a day"],[10,"Balanced","10 stories a day"],["explorer","Explorer","More stories whenever I want"]].map(([v,a,d])=>`<button class="opt" data-a="amount" data-v="${v}" aria-pressed="${String(S.prefs.amount)===String(v)}"><span class="radio"></span><span><b>${t(a)}</b><span class="muted">${t(d)}</span></span></button>`).join("");
+V.ob4=()=>`<div class="full">${steps(5)}<h1>${t("How much news do you want?")}</h1><p class="lead">${t("You can finish your day's stories. Nothing here scrolls forever.")}</p>${amounts()}<div class="spacer"></div><button class="btn" data-a="go" data-to="ob5">${t("Continue")}</button></div>`;
+V.ob5=()=>`<div class="full"><div class="spacer"></div><div style="text-align:center">${MARK}</div><h1 style="text-align:center">${t("Your positive corner of the internet is ready.")}</h1><p class="lead" style="text-align:center">${t("Topics: {0} · Sources: {1} · Regions: {2} · Stories today: {3}",S.prefs.cats.size,S.prefs.sources.length,S.prefs.regions.size||t("Everywhere"),doseSize())}</p><div class="spacer"></div><button class="btn" data-a="tab" data-to="home">${t("Start discovering")}</button></div>`;
+
+V.home=()=>{
+  const {list,outside}=ranked(),n=doseSize(),dose=list.slice(0,n),done=dose.filter(s=>S.read.includes(s.id)).length;
+  const shown=list.slice(0,n+S.extra),more=list.length>shown.length;
+  const hr=new Date().getHours(),hi=hr<12?t("Good morning"):hr<18?t("Good afternoon"):t("Good evening");
+  const mood=S.p.mood?MOODS.find(m=>m[0]===S.p.mood):null;
+  const feed=mood?STORIES.filter(s=>s.moods.includes(mood[0])&&!S.hidden.has(s.source)):shown;
+  return `<div class="pad">
+  <div class="hello"><div class="eyebrow">${new Date().toLocaleDateString(LOC[LANG],{weekday:"long",day:"numeric",month:"long"})}</div><h1>${hi}. ${t("Here is what went right.")}</h1></div>
+  <button class="good" data-a="good">${ic("spark")}<span>${t("Give me something good")}</span>${ic("chev")}</button>
+  <button class="dose" data-a="go" data-to="dose"><span class="eyebrow" style="color:inherit">${t("Your daily dose")}</span><strong>${done>=dose.length?t("{0}/{1} positive stories explored today",done,dose.length):t("{0} of {1} stories explored today",done,dose.length)}</strong><span class="pips">${dose.map(s=>`<i class="${S.read.includes(s.id)?"on":""}"></i>`).join("")}</span><span class="small">${done>=dose.length?t("You're caught up."):t("Read them one at a time")} ›</span></button>
+  <div><div class="eyebrow" style="margin-bottom:8px">${t("What do you need right now?")}</div><div class="hscroll">${MOODS.map(m=>`<button class="chip" data-a="mood" data-m="${m[0]}" aria-pressed="${S.p.mood===m[0]}">${t(m[1])}</button>`).join("")}</div></div>
+  ${mood?`<div class="banner"><span>${t("Showing “{0}” for now. Your preferences are unchanged.",t(mood[1]))}</span><button data-a="mood" data-m="">${t("Clear")}</button></div>`:""}
+  ${feed.map(s=>card(s,mood?"":s.id===outside?t("Outside your usual topics"):S.prefs.regions.has(s.country)?t("From your regions"):"")).join("")||empty(t("Nothing matches right now."))}
+  ${mood?"":`<div class="stop"><span class="leaf">${ic("leaf")}</span><h3>${done>=dose.length?t("You're caught up with today's good news."):t("That's today's selection.")}</h3><p class="muted">${t("That's enough scrolling for now. There will be more good things tomorrow.")}</p>
+   <button class="btn" data-a="go" data-to="rest">${t("I'm done for now")}</button>${more?`<button class="btn ghost" data-a="more">${t("Show me one more")}</button>`:`<p class="small muted">${t("You've seen every story in this prototype.")}</p>`}</div>`}
+  </div>`;
+};
+V.rest=()=>`<div class="full" style="text-align:center;align-items:center"><div class="spacer"></div>${MARK}<h1>${t("See you tomorrow.")}</h1><p class="lead">${t("Good stories explored today: {0}. In the real app, this is where it would close.",S.read.length)}</p><div class="spacer"></div><button class="btn ghost" data-a="tab" data-to="home">${t("Back to the app")}</button></div>`;
+
+V.dose=()=>{
+  const dose=doseList(),i=S.p.i||0;
+  if(i>=dose.length)return `<div class="full" style="text-align:center;align-items:center"><div class="spacer"></div><span class="leaf" style="width:64px;height:64px">${ic("check")}</span><h1>${t("{0}/{1} positive stories explored today",dose.length,dose.length)}</h1><p class="lead">${t("You're caught up. There will be more good things tomorrow.")}</p><div class="spacer"></div><button class="btn" data-a="go" data-to="rest">${t("I'm done for now")}</button><button class="btn ghost" data-a="tab" data-to="home">${t("Back to home")}</button></div>`;
+  const s=dose[i];markRead(s.id);
+  return `<div class="top"><button class="iconbtn" data-a="tab" data-to="home" aria-label="${t("Close")}">${ic("close")}</button><h2>${t("Daily dose")}</h2><span class="muted small" style="padding-right:8px">${t("{0} of {1}",i+1,dose.length)}</span></div>
+  <div class="pad" style="padding-top:6px"><div class="pips">${dose.map((x,j)=>`<i style="background:${j<=i?"var(--forest)":"var(--line)"}"></i>`).join("")}</div>
+  <div class="card" style="cursor:default"><div class="art">${art(s.art)}<span class="tag">${t(s.tag)}</span></div><div class="cbody" style="padding-bottom:16px"><div class="cat">${esc(t(s.cat))} · ${t(s.country)}</div><h3>${esc(st(s,"title"))}</h3><p style="color:var(--ink)">${esc(st(s,"what"))}</p><p>${esc(st(s,"why"))}</p><div class="meta"><span>${esc(s.source)}</span><span>${fmt(s.date)}</span><span class="ai">${t("AI summary")}</span></div></div></div>
+  <button class="btn" data-a="doseNext">${i+1===dose.length?t("Finish"):t("Next story")}</button><button class="btn ghost" data-a="open" data-id="${s.id}">${t("Read the full summary")}</button></div>`;
+};
+
+V.article=()=>{
+  const s=byId(S.p.id);markRead(s.id);const sv=anySaved(s.id);
+  return `<div class="article"><div class="art"><div class="floatbar"><button class="iconbtn" data-a="back" aria-label="${t("Back")}">${ic("back")}</button><span style="display:flex;gap:8px"><button class="iconbtn" data-a="collect" data-id="${s.id}" aria-label="${t("Save to a collection")}" aria-pressed="${sv}">${ic("bookmark")}</button><button class="iconbtn" data-a="share" data-id="${s.id}" aria-label="${t("Share")}">${ic("share")}</button></span></div>${art(s.art)}<span class="tag">${t(s.tag)}</span><span class="ph">${t("Illustration placeholder")}</span></div>
+  <div class="pad">
+   ${S.p.good?`<div class="banner"><span>${ic("spark")}</span><span>${t("Something good, picked at random.")}</span><button data-a="good">${t("Another")}</button></div>`:""}
+   <div class="cat">${esc(t(s.cat))} · ${t(s.country)}</div><h1>${esc(st(s,"title"))}</h1>
+   <div class="byline"><span>${t("Published by")} <b>${esc(s.source)}</b>${s.author?` · ${esc(s.author)}`:""}</span><span>${fmt(s.date)} · ${t("{0} min read at the source",s.read)}</span></div>
+   ${s.serious?`<div class="context">${t("The subject here is serious. It is included because the development itself is constructive.")}</div>`:""}
+   <div class="summary"><div class="sumhead"><span class="ai">${t("AI-generated summary")}</span><span class="small muted">${t("Not original journalism")}</span></div>
+    ${LANG!=="en"?`<p class="small muted" style="font-size:13px">${t("Translated by AI. The original article is in English.")}</p>`:""}
+    <div><h4>${t("What happened")}</h4><p>${esc(st(s,"what"))}</p></div><div><h4>${t("Why it matters")}</h4><p>${esc(st(s,"why"))}</p></div><div><h4>${t("The bigger picture")}</h4><p>${esc(st(s,"bigger"))}</p></div></div>
+   <a class="btn" href="${s.url}" target="_blank" rel="noopener">${t("Read original article")} ${ic("ext")}</a>
+   <div><div class="eyebrow" style="margin-bottom:8px">${t("Also reported by")}</div><div class="also">${s.also.length?s.also.map(a=>`<a href="${a[1]}" target="_blank" rel="noopener">${esc(a[0])} ${ic("ext")}</a>`).join(""):`<span class="muted">${t("One source so far. Not yet independently confirmed.")}</span>`}</div></div>
+   <div><div class="eyebrow" style="margin-bottom:8px">${t("Tune your feed")}</div><div class="tune">
+    <button data-a="like" data-d="1" data-c="${esc(s.cat)}" aria-pressed="${(S.like[s.cat]||0)>0}">${ic("plus")}${t("More like this")}</button>
+    <button data-a="like" data-d="-1" data-c="${esc(s.cat)}" aria-pressed="${(S.like[s.cat]||0)<0}">${ic("minus")}${t("Less like this")}</button>
+    <button data-a="follow" data-src="${esc(s.source)}" aria-pressed="${following(s.source)}">${ic("star")}${following(s.source)?t("Following source"):t("Follow this source")}</button>
+    <button data-a="hide" data-src="${esc(s.source)}">${ic("hide")}${t("Hide this source")}</button>
+    <button class="wide" data-a="mute" data-c="${esc(s.cat)}" aria-pressed="${S.muted.has(s.cat)}">${ic("bell")}${t("Show fewer stories about {0}",esc(t(s.cat)))}</button></div></div>
+  </div></div>`;
+};
+
+const QUERIES=["medical breakthroughs","good news from Poland","animals saved from extinction","renewable energy progress","good things happening in Africa"];
+V.discover=()=>`<div class="pad"><h1 style="font-size:28px">${t("Discover")}</h1>
+ <form class="searchbar" data-form="search"><input type="search" id="q" placeholder="${t("Try “good news from Poland”")}" aria-label="${t("Search good news")}"><button aria-label="${t("Search")}">${ic("search")}</button></form>
+ <div class="hscroll">${QUERIES.map(q=>`<button class="chip" data-a="search" data-q="${t(q)}">${t(q)}</button>`).join("")}</div>
+ <div class="grid2"><button class="tile wide" data-a="go" data-to="map">${ic("globe")}<span><b>${t("Good News Map")}</b><br><span class="small muted">${t("Good things, by place")}</span></span></button>
+  <button class="tile wide" data-a="go" data-to="weekly">${ic("chart")}<span><b>${t("This Week Wasn't All Bad")}</b><br><span class="small muted">${t("Your weekly perspective")}</span></span></button></div>
+ <div class="eyebrow">${t("What do you need right now?")}</div><div class="grid2">${MOODS.map(m=>`<button class="tile mood" data-a="go" data-to="moodfeed" data-m="${m[0]}"><b>${t(m[1])}</b></button>`).join("")}</div>
+ <div class="eyebrow">${t("Browse by topic")}</div><div class="grid2">${CATS.map(c=>{const n=STORIES.filter(s=>s.cat===c).length;return `<button class="tile" data-a="go" data-to="category" data-c="${esc(c)}"><b>${esc(t(c))}</b><span class="small muted">${n?t("Stories: {0}",n):t("No sample stories")}</span></button>`}).join("")}</div></div>`;
+V.category=()=>{const l=STORIES.filter(s=>s.cat===S.p.c);return bar(esc(t(S.p.c)))+`<div class="pad" style="padding-top:8px">${l.map(s=>card(s)).join("")||empty(t("No sample stories for this topic in the prototype. The live app would fill it from verified sources."))}</div>`};
+V.moodfeed=()=>{const m=MOODS.find(x=>x[0]===S.p.m),l=STORIES.filter(s=>s.moods.includes(m[0]));return bar(t(m[1]))+`<div class="pad" style="padding-top:8px"><div class="banner"><span>${t("A temporary feed. Your preferences stay as they are.")}</span></div>${l.map(s=>card(s)).join("")}</div>`};
+function search(q){
+  const stop=new Set(("good news positive from things thing happening in the about show me a of and has anything recently some what is are to "+((I18N.stop||{})[LANG]||"")).split(" "));
+  const toks=q.toLowerCase().replace(/[^\p{L}\s-]/gu,"").split(/\s+/).filter(x=>x&&!stop.has(x));
+  const stem=x=>x.slice(0,Math.max(4,x.length-2));
+  const res=STORIES.map(s=>{const hay=[st(s,"title"),st(s,"sum"),t(s.cat),t(s.country),t(s.tag),s.source,s.kw,LANG!=="en"?st(s,"kw"):""].join(" ").toLowerCase();return [toks.filter(x=>hay.includes(stem(x))).length,s]}).filter(x=>x[0]>0&&x[0]>=Math.min(toks.length,2)).sort((a,b)=>b[0]-a[0]).map(x=>x[1]);
+  return {toks,res};
+}
+V.search=()=>{const {toks,res}=search(S.p.q||"");return bar(t("Search"))+`<div class="pad" style="padding-top:8px">
+ <form class="searchbar" data-form="search"><input type="search" id="q" value="${esc(S.p.q||"")}" aria-label="${t("Search good news")}"><button aria-label="${t("Search")}">${ic("search")}</button></form>
+ <p class="small muted">${toks.length?`${t("Understood as")}: ${toks.map(x=>`<b style="color:var(--ink)">${esc(x)}</b>`).join(" + ")} · ${t("Sourced stories: {0}",res.length)}`:t("Type a place, topic or kind of progress.")}</p>
+ ${res.map(mini).join("")||(toks.length?empty(t("Nothing verified matches that yet. The app never invents a story to fill a gap.")):"")}</div>`};
+
+function mapSvg(sel){
+  const R=[[[18,26],[45,48]],[[9,17],[21,26],[43,51]],[[3,19],[21,23],[26,27],[32,59]],[[3,6],[8,13],[17,19],[22,22],[31,57]],[[8,20],[28,29],[31,53],[56,56]],[[9,21],[29,52]],[[9,18],[28,37],[39,51],[53,53]],[[10,17],[29,31],[35,49],[51,53]],[[11,16],[28,50]],[[12,13],[27,39],[41,49]],[[13,15],[18,18],[27,39],[42,44],[46,48],[50,50]],[[15,16],[27,37],[42,43],[46,48],[50,50]],[[17,21],[28,37],[46,47],[49,49]],[[17,21],[31,37],[46,50]],[[17,24],[32,36],[47,48],[52,55]],[[17,23],[32,36],[52,53]],[[18,23],[32,36],[37,38],[50,54]],[[18,23],[32,35],[37,37],[49,55]],[[18,21],[33,35],[49,55]],[[18,20],[53,54],[59,59]],[[18,19],[54,54],[58,58]],[[17,18]],[[18,18]]];
+  let d="";R.forEach((row,r)=>row.forEach(([a,b])=>{for(let c=a;c<=b;c++)d+=`<circle cx="${c*6+3}" cy="${r*6+6}" r="2.1"/>`}));
+  const pins=Object.entries(PLACES).map(([name,[lon,lat]])=>{const n=STORIES.filter(s=>s.country===name).length;return `<g class="pin ${sel===name?"on":""}" data-a="pin" data-c="${name}" tabindex="0" role="button" aria-label="${t(name)}: ${n}"><circle cx="${lon+180}" cy="${84-lat}" r="8"/><text x="${lon+180}" y="${86.4-lat}">${n}</text></g>`}).join("");
+  return `<svg viewBox="0 0 360 144" role="img" aria-label="${t("Good News Map")}"><g class="land">${d}</g>${pins}</svg>`;
+}
+V.map=()=>{const sel=S.p.c||"Poland",l=STORIES.filter(s=>s.country===sel);
+ return bar(t("Good News Map"))+`<div class="pad" style="padding-top:8px"><p class="muted">${t("Positive things are happening everywhere. Tap a place.")}</p><div class="mapbox">${mapSvg(sel)}</div>
+ <div class="hscroll">${Object.keys(PLACES).concat("Worldwide").map(c=>`<button class="chip" data-a="pin" data-c="${c}" aria-pressed="${sel===c}">${t(c)}</button>`).join("")}</div>
+ <div class="eyebrow">${t(sel)} · ${t("Stories: {0}",l.length)}</div>${l.map(mini).join("")}</div>`};
+
+V.saved=()=>{const open=S.p.col||0,c=S.cols[open];return `<div class="pad"><h1 style="font-size:28px">${t("Saved")}</h1>
+ <div class="hscroll">${S.cols.map((x,i)=>`<button class="chip" data-a="col" data-i="${i}" aria-pressed="${i===open}">${esc(t(x.name))} · ${x.ids.length}</button>`).join("")}<button class="chip" data-a="newcolSheet">${t("+ New collection")}</button></div>
+ ${c.ids.map(id=>mini(byId(id))).join("")||empty(t("Nothing in “{0}” yet. Tap the bookmark on any story.",esc(t(c.name))))}</div>`};
+
+V.sources=()=>{const f=S.prefs.sources,rest=SOURCES.filter(s=>!f.includes(s)&&!S.hidden.has(s));return bar(t("My Sources"))+`<div class="pad" style="padding-top:8px"><p class="muted">${t("Stories from these publishers get a slight lift in your feed. Order them by how much you trust them.")}</p>
+ <div class="rows">${f.map((s,i)=>`<div class="row"><span style="color:var(--sun)">${ic("star")}</span><span class="grow"><b>${esc(s)}</b><div class="sub">${t("Sample stories: {0}",STORIES.filter(x=>x.source===s).length)}</div></span><button class="iconbtn" data-a="srcMove" data-i="${i}" data-d="-1" aria-label="${t("Move up")}" ${i?"":"disabled style=\"opacity:.3\""}>${ic("up")}</button><button class="iconbtn" data-a="srcMove" data-i="${i}" data-d="1" aria-label="${t("Move down")}" ${i<f.length-1?"":"disabled style=\"opacity:.3\""}>${ic("down")}</button><button class="iconbtn" data-a="follow" data-src="${esc(s)}" aria-label="${t("Remove")}">${ic("close")}</button></div>`).join("")||`<div class="row muted">${t("You haven't chosen any sources yet.")}</div>`}</div>
+ <div class="eyebrow">${t("Add a source")}</div><div class="chips">${rest.map(s=>`<button class="chip" data-a="follow" data-src="${esc(s)}">+ ${esc(s)}</button>`).join("")}</div>
+ ${S.hidden.size?`<div class="eyebrow">${t("Hidden sources")}</div><div class="chips">${[...S.hidden].map(s=>`<button class="chip" data-a="unhide" data-src="${esc(s)}">${t("Show {0} again",esc(s))}</button>`).join("")}</div>`:""}</div>`};
+
+V.weekly=()=>{
+  const g=[["Environmental wins",["Environment & Nature","Conservation","World"]],["Science and health advances",["Science","Health & Medicine","Innovation","Space"]],["Wildlife recovery stories",["Animals"]],["Community stories",["Local Communities","Humanity & Community","Inspiring People"]]];
+  const countries=new Set(STORIES.map(s=>s.country).filter(c=>c!=="Worldwide")).size,open=S.p.g;
+  return bar(t("Weekly Perspective"))+`<div class="pad" style="padding-top:8px"><div><div class="eyebrow">${t("Your weekly summary")}</div><h1 style="font-size:30px;margin-top:4px">${t("This Week Wasn't All Bad")}</h1></div>
+  <p class="muted">${t("Counted from the {0} sample stories in this prototype, which span 2026. The live app would count one calendar week.",STORIES.length)}</p>
+  <div class="grid2">${g.map(([x,cs],i)=>{const n=STORIES.filter(s=>cs.includes(s.cat)).length;return `<button class="tile" data-a="wk" data-g="${i}" style="${open===i?"outline:2px solid var(--forest)":""}"><span class="n">${n}</span><span class="small">${t(x)}</span></button>`}).join("")}
+  <button class="tile wide" data-a="go" data-to="map">${ic("globe")}<span><b>${t("Positive developments from {0} countries",countries)}</b><br><span class="small muted">${t("Open the map")}</span></span></button></div>
+  ${open!=null?`<div class="eyebrow">${t(g[open][0])}</div>`+STORIES.filter(s=>g[open][1].includes(s.cat)).map(mini).join(""):`<p class="small muted">${t("Tap a number to see the stories behind it.")}</p>`}</div>`};
+
+V.profile=()=>{const r=S.read.map(byId),cnt=cs=>r.filter(s=>cs.includes(s.cat)).length,sci=cnt(["Science","Health & Medicine","Innovation","Space"]),env=cnt(["Environment & Nature","Conservation","World","Animals"]),hum=cnt(["Local Communities","Humanity & Community","Inspiring People"]);
+ const dark=document.documentElement.classList.contains("dark");
+ const row=(i,a,sub,to)=>`<button class="row" data-a="${to==="lang"?"langSheet":"go"}" data-to="${to}">${ic(i)}<span class="grow"><b>${a}</b><div class="sub">${sub}</div></span>${ic("chev")}</button>`;
+ const cats=[...S.prefs.cats].map(c=>t(c));
+ return `<div class="pad"><div style="display:flex;gap:14px;align-items:center"><div class="avatar">M</div><div><h1 style="font-size:26px">Maya</h1><div class="muted small">${t("Sample profile · Free plan")}</div></div></div>
+ <div><div class="eyebrow" style="margin-bottom:8px">${t("Your month of good news")}</div><div class="grid2"><div class="tile"><span class="n">${r.length}</span><span class="small">${t("positive stories discovered")}</span></div><div class="tile"><span class="n">${sci}</span><span class="small">${t("science and health advances")}</span></div><div class="tile"><span class="n">${env}</span><span class="small">${t("environmental wins")}</span></div><div class="tile"><span class="n">${hum}</span><span class="small">${t("human stories")}</span></div></div><p class="small muted" style="margin-top:8px">${t("Counts what you have opened in this session. No streaks, nothing to keep up.")}</p></div>
+ <div class="rows">${row("sliders",t("Favourite topics"),esc(cats.slice(0,3).join(", "))+(cats.length>3?` +${cats.length-3}`:""),"personal")}${row("globe",t("Regions"),regionLine(),"personal")}${row("star",t("My Sources"),t("Followed: {0}",S.prefs.sources.length),"sources")}${row("bookmark",t("Saved stories"),t("Saved: {0} · Collections: {1}",S.cols.reduce((a,c)=>a+c.ids.length,0),S.cols.length),"saved")}${row("clock",t("Reading history"),t("Opened: {0}",r.length),"history")}${row("bell",t("Notifications"),S.notif.freq==="Off"?t("Off"):t(S.notif.freq)+" · "+S.notif.time,"notifs")}${row("globe",t("Language"),I18N.langs[LANG],"lang")}${row("crown",t("Plans"),t("Free and Premium"),"plans")}
+ <div class="row">${ic("moon")}<span class="grow"><b>${t("Dark mode")}</b></span><button class="switch" role="switch" aria-checked="${dark}" aria-label="${t("Dark mode")}" data-a="dark"></button></div></div></div>`};
+V.history=()=>bar(t("Reading history"))+`<div class="pad" style="padding-top:8px">${S.read.slice().reverse().map(id=>mini(byId(id))).join("")||empty(t("Stories you open will appear here."))}</div>`;
+V.personal=()=>bar(t("Personalisation"))+`<div class="pad" style="padding-top:8px"><div class="eyebrow">${t("Topics you want more of")}</div><div class="chips">${CATS.map(c=>`<button class="chip" data-a="cat" data-c="${esc(c)}" aria-pressed="${S.prefs.cats.has(c)}">${esc(t(c))}</button>`).join("")}</div>
+ <p class="small muted">${t("Your topics appear more often. About one story in five comes from outside them, so the feed doesn't narrow.")}</p>
+ <div class="eyebrow">${t("Regions you want more from")}</div>${regionPicker()}<p class="small muted">${S.prefs.regions.size?t("These countries get a lift in your feed. Everything else still appears."):t("Nothing chosen, so stories come from everywhere equally.")}</p>
+ <div class="eyebrow">${t("Stories per day")}</div>${amounts()}
+ <div class="eyebrow">${t("Showing fewer of")}</div><div class="chips">${[...S.muted].map(c=>`<button class="chip" data-a="mute" data-c="${esc(c)}">${esc(t(c))} ×</button>`).join("")||`<span class="muted small">${t("Nothing muted. Use “Show fewer stories” on any article.")}</span>`}</div>
+ <div class="rows"><button class="row" data-a="go" data-to="sources">${ic("star")}<span class="grow"><b>${t("My Sources")}</b><div class="sub">${t("Followed: {0} · Hidden: {1}",S.prefs.sources.length,S.hidden.size)}</div></span>${ic("chev")}</button></div></div>`;
+V.notifs=()=>{const n=S.notif,seg=(k,opts)=>`<div class="seg">${opts.map(o=>`<button data-a="notif" data-k="${k}" data-v="${o}" aria-pressed="${n[k]===o}">${t(o)}</button>`).join("")}</div>`;
+ const d=doseList().slice(0,3).map(s=>st(s,"title"));
+ return bar(t("Notifications"))+`<div class="pad" style="padding-top:8px"><p class="muted">${t("At most one a day. No alerts about what you're missing.")}</p>
+ <div class="eyebrow">${t("How often")}</div>${seg("freq",["Daily","Weekdays","Weekly","Off"])}
+ ${n.freq==="Off"?`<p class="muted small">${t("Notifications are off. The stories will be here when you open the app.")}</p>`:`<div class="eyebrow">${t("When")}</div><input type="time" id="ntime" data-c="ntime" value="${n.time}" aria-label="${t("Notification time")}">
+ <div class="eyebrow">${t("Which stories")}</div>${seg("scope",["My topics","Everything"])}
+ <div class="eyebrow">${t("Preview")}</div><div class="notif">${MARK}<div><b>${t("Your daily dose of good news is ready")}</b><div class="small muted" style="margin-top:2px">${esc(d.join(" · "))}</div><div class="small muted" style="margin-top:6px">${t(n.freq)} · ${n.time}</div></div></div>`}</div>`};
+const li=a=>a.map(x=>`<li>${t(x)}</li>`).join("");
+V.plans=()=>bar(t("Plans"))+`<div class="pad" style="padding-top:8px"><div class="plan"><div class="eyebrow">${t("Free · your plan")}</div><ul>${li(["Daily positive news feed","Basic categories","Favourite sources","Limited saved articles"])}</ul></div>
+ <div class="plan pro"><div class="eyebrow">${t("Premium")}</div><ul>${li(["Advanced personalisation and filters","Unlimited saved collections","AI news assistant, answering only from verified stories","Good News Map","Custom daily digest and weekly perspective reports","Ad-free experience"])}</ul><button class="btn soft" data-a="toast" data-t="${esc(t("Pricing isn't decided yet, so nothing happens here."))}">${t("See Premium")}</button></div>
+ <p class="small muted">${t("Trustworthy news itself stays free. Premium adds tools, never access to the stories.")}</p></div>`;
+
+/* ---------- navigation + render ---------- */
+const TABS={home:["home","Home"],discover:["search","Discover"],good:["spark","Good News"],saved:["bookmark","Saved"],profile:["user","Profile"]};
+const NONAV=["splash","ob1","ob2","ob3","obr","ob4","ob5","rest","dose"];
+function render(keep){
+  const sc=$("screen"),y=sc.scrollTop;sc.innerHTML=V[S.screen]();sc.scrollTop=keep?y:0;
+  const nav=$("nav");nav.hidden=NONAV.includes(S.screen);
+  nav.innerHTML=Object.entries(TABS).map(([k,[i,l]])=>k==="good"?`<button class="center" data-a="good" aria-label="${t("Give me something good")}"><span class="orb">${ic(i)}</span>${t(l)}</button>`:`<button data-a="tab" data-to="${k}" ${S.tab===k&&!nav.hidden?'aria-current="page"':""}>${ic(i)}${t(l)}</button>`).join("");
+}
+function go(to,p={},push=true){if(push)S.stack.push({screen:S.screen,p:S.p});S.screen=to;S.p=p;closeSheet();render()}
+function toast(x){const e=$("toast");e.textContent=x;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),2400)}
+function sheet(html){const e=$("sheet");e.innerHTML=`<div class="sheet">${html}</div>`;e.classList.add("open")}
+function closeSheet(){const e=$("sheet");e.classList.remove("open");e.innerHTML=""}
+function colSheet(id){const s=byId(id);sheet(`<h3>${t("Save to a collection")}</h3><p class="small muted">${esc(st(s,"title"))}</p><div class="rows">${S.cols.map((c,i)=>`<button class="row" data-a="colToggle" data-i="${i}" data-id="${id}"><span class="grow"><b>${esc(t(c.name))}</b></span>${c.ids.includes(id)?ic("check"):""}</button>`).join("")}</div><form class="searchbar" data-form="newcol" data-id="${id}"><input type="text" id="newcol" placeholder="${t("New collection name")}" aria-label="${t("New collection name")}"><button aria-label="${t("Create")}">${ic("plus")}</button></form><button class="btn ghost" data-a="closeSheet">${t("Done")}</button>`)}
+function renderGuide(){
+  $("guide").innerHTML=GUIDE.map(([k,l])=>`<li><button data-a="jump" data-to="${k}">${l}</button></li>`).join("");
+  $("langs").innerHTML=Object.entries(I18N.langs).map(([k,l])=>`<button class="chip" data-a="lang" data-l="${k}" aria-pressed="${LANG===k}">${l}</button>`).join("");
+}
+
+const A={
+  go:d=>{const p={};if(d.c)p.c=d.c;if(d.m)p.m=d.m;go(d.to,p)},
+  tab:d=>{S.stack=[];S.tab=d.to;S.screen=d.to;S.p={};closeSheet();render()},
+  back:()=>{const x=S.stack.pop();if(x){S.screen=x.screen;S.p=x.p}else{S.screen=S.tab;S.p={}}render()},
+  open:d=>go("article",{id:d.id}),
+  good:()=>{const pool=STORIES.filter(s=>!S.hidden.has(s.source)&&s.id!==S.lastGood);const s=pool[Math.floor(Math.random()*pool.length)];S.lastGood=s.id;go("article",{id:s.id,good:1},S.screen!=="article"||!S.p.good)},
+  save:d=>{const c=S.cols[0].ids,i=c.indexOf(d.id);if(i>-1){c.splice(i,1);toast(t("Removed from Saved"))}else{c.push(d.id);toast(t("Saved"))}render(1)},
+  collect:d=>colSheet(d.id),
+  colToggle:d=>{const c=S.cols[+d.i].ids,i=c.indexOf(d.id);i>-1?c.splice(i,1):c.push(d.id);render(1);colSheet(d.id)},
+  col:d=>{S.p={col:+d.i};render(1)},
+  newcolSheet:()=>sheet(`<h3>${t("New collection")}</h3><form class="searchbar" data-form="newcol"><input type="text" id="newcol" placeholder="${t("For example, Inspiring stories")}" aria-label="${t("New collection name")}"><button aria-label="${t("Create")}">${ic("plus")}</button></form><button class="btn ghost" data-a="closeSheet">${t("Cancel")}</button>`),
+  closeSheet,
+  langSheet:()=>sheet(`<h3>${t("Language")}</h3><p class="small muted">${t("Changes the app and every story summary. Links still open the original article.")}</p><div class="rows">${Object.entries(I18N.langs).map(([k,l])=>`<button class="row" data-a="lang" data-l="${k}"><span class="grow"><b>${l}</b></span>${LANG===k?ic("check"):""}</button>`).join("")}</div><button class="btn ghost" data-a="closeSheet">${t("Done")}</button>`),
+  lang:d=>{LANG=d.l;document.documentElement.lang=LANG;closeSheet();render(1);renderGuide()},
+  follow:d=>{const f=S.prefs.sources,i=f.indexOf(d.src);if(i>-1){f.splice(i,1);toast(t("Removed {0} from your sources",d.src))}else{f.push(d.src);S.hidden.delete(d.src);toast(t("Following {0}",d.src))}render(1)},
+  hide:d=>{S.hidden.add(d.src);const i=S.prefs.sources.indexOf(d.src);if(i>-1)S.prefs.sources.splice(i,1);toast(t("{0} hidden. Undo in My Sources.",d.src));A.back()},
+  unhide:d=>{S.hidden.delete(d.src);render(1)},
+  like:d=>{const v=+d.d;S.like[d.c]=S.like[d.c]===v?0:v;toast(S.like[d.c]>0?t("You'll see a little more like this"):S.like[d.c]<0?t("You'll see a little less like this"):t("Preference cleared"));render(1)},
+  mute:d=>{if(S.muted.has(d.c)){S.muted.delete(d.c);toast(t("Back to normal for {0}",t(d.c)))}else{S.muted.add(d.c);toast(t("Fewer stories about {0}",t(d.c)))}render(1)},
+  share:d=>{const s=byId(d.id),fb=t("Share: {0} article link",s.source);try{navigator.clipboard.writeText(s.url).then(()=>toast(t("Link to the original article copied")),()=>toast(fb))}catch(e){toast(fb)}},
+  cat:d=>{const c=S.prefs.cats;c.has(d.c)?c.delete(d.c):c.add(d.c);render(1)},
+  region:d=>{const r=S.prefs.regions;r.has(d.c)?r.delete(d.c):r.add(d.c);render(1)},
+  regionAll:d=>{const r=S.prefs.regions,cs=REGIONS[d.r],all=cs.every(c=>r.has(c));cs.forEach(c=>all?r.delete(c):r.add(c));render(1)},
+  amount:d=>{S.prefs.amount=d.v==="explorer"?"explorer":+d.v;S.extra=0;render(1)},
+  mood:d=>{S.p=d.m?{mood:d.m}:{};render(1)},
+  more:()=>{S.extra++;render(1)},
+  doseNext:()=>{S.p={i:(S.p.i||0)+1};render()},
+  search:d=>go("search",{q:d.q}),
+  pin:d=>{S.p={c:d.c};render(1)},
+  wk:d=>{S.p={g:S.p.g===+d.g?null:+d.g};render(1)},
+  srcMove:d=>{const f=S.prefs.sources,i=+d.i,j=i+ +d.d;if(j<0||j>=f.length)return;[f[i],f[j]]=[f[j],f[i]];render(1)},
+  notif:d=>{S.notif[d.k]=d.v;render(1)},
+  dark:()=>{document.documentElement.classList.toggle("dark");render(1)},
+  toast:d=>toast(d.t),
+  jump:d=>{if(d.to==="dark")return A.dark();if(d.to==="good")return A.good();if(d.to==="lang")return A.langSheet();
+    const tabOf={home:"home",discover:"discover",saved:"saved",profile:"profile"};S.stack=[];
+    if(tabOf[d.to]){A.tab({to:d.to});return}
+    S.tab=["sources","personal","notifs","plans"].includes(d.to)?"profile":["article","dose"].includes(d.to)?"home":"discover";
+    if(NONAV.includes(d.to)&&d.to!=="dose")S.tab="home";
+    const p=d.to==="article"?{id:"amazon"}:d.to==="search"?{q:t("good news from Poland")}:d.to==="moodfeed"?{m:"hope"}:d.to==="category"?{c:"Conservation"}:{};
+    S.stack=[{screen:S.tab,p:{}}];go(d.to,p,false)}
+};
+const GUIDE=[["splash","Splash"],["ob1","Onboarding"],["ob2","Topic selection"],["ob3","Source selection"],["obr","Region selection"],["home","Home feed"],["dose","Daily Dose"],["article","Article + AI summary"],["good","Something good"],["discover","Discover"],["category","Category feed"],["search","Search"],["moodfeed","Mood discovery"],["map","Good News Map"],["sources","My Sources"],["saved","Saved stories"],["weekly","Weekly Perspective"],["profile","Profile"],["personal","Personalisation"],["notifs","Notifications"],["plans","Plans"],["lang","Language"],["dark","Toggle dark mode"]];
+
+function init(){
+  const root=document.documentElement,th=root.getAttribute("data-theme");
+  if(th==="dark"||(!th&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches))root.classList.add("dark");
+  const nl=((typeof navigator!=="undefined"&&navigator.language)||"en").slice(0,2).toLowerCase();if(I18N.langs[nl]){LANG=nl;root.lang=nl}
+  renderGuide();
+  document.addEventListener("click",e=>{
+    if(e.target.id==="sheet"){closeSheet();return}
+    const el=e.target.closest("[data-a]");if(!el||el.disabled)return;
+    const f=A[el.dataset.a];if(f)f(el.dataset);
+  });
+  document.addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches&&e.target.matches("article[data-a],g[data-a]")){e.preventDefault();A[e.target.dataset.a](e.target.dataset)}});
+  document.addEventListener("submit",e=>{e.preventDefault();const f=e.target.dataset.form;
+    if(f==="search"){const q=e.target.querySelector("input").value.trim();if(q)go("search",{q},S.screen!=="search")}
+    if(f==="newcol"){const v=e.target.querySelector("input").value.trim();if(!v)return;S.cols.push({name:v,ids:e.target.dataset.id?[e.target.dataset.id]:[]});toast(t("Collection created"));closeSheet();render(1)}
+  });
+  document.addEventListener("change",e=>{if(e.target.dataset&&e.target.dataset.c==="ntime"){S.notif.time=e.target.value||S.notif.time;render(1)}});
+  render();
+  setTimeout(()=>{if(S.screen==="splash")go("ob1",{},false)},2200);
+}
+init();
+})();
+</script>
+</body>
+</html>
