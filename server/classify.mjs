@@ -38,7 +38,9 @@ Keep a story only when it reports a real development that is positive, hopeful, 
 
 Drop it when it is mainly about harm, conflict, fear or outrage; when positivity is forced onto a tragedy; when it is opinion, advice, a product pitch, a listicle, a quiz or a promotion; when it is trivial "cute content" with no real-world substance; or when the headline is clickbait or misrepresents the excerpt.
 
-Summaries must use only facts stated in the headline and excerpt. Never add numbers, names, quotes, dates or claims that are not there. "Why it matters" and "the bigger picture" may give general context, but phrase it cautiously and keep any limitation the excerpt mentions. Write plain, calm, factual English without hype or exclamation marks.`;
+Items are in English or Polish (see "language"). Judge them the same way, and write each item's summaries in that item's language, so the app can show them as published and translate them separately.
+
+Summaries must use only facts stated in the headline and excerpt. Never add numbers, names, quotes, dates or claims that are not there. "Why it matters" and "the bigger picture" may give general context, but phrase it cautiously and keep any limitation the excerpt mentions. Write plain, calm, factual text without hype or exclamation marks.`;
 
 let client;
 /** Returns Map(id -> review) for the items it managed to review. */
@@ -47,7 +49,7 @@ export async function reviewWithAI(items, log = console) {
   const out = new Map();
   for (let i = 0; i < items.length; i += BATCH) {
     const chunk = items.slice(i, i + BATCH);
-    const payload = chunk.map(it => ({ id: it.id, outlet: it.source, headline: it.title, excerpt: it.description.slice(0, 1200) }));
+    const payload = chunk.map(it => ({ id: it.id, language: it.lang || "en", outlet: it.source, headline: it.title, excerpt: it.description.slice(0, 1200) }));
     try {
       const res = await client.messages.parse({
         model: MODEL,

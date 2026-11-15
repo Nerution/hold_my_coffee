@@ -9,7 +9,10 @@ import { z } from "zod/v4";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { MODEL, aiEnabled } from "./classify.mjs";
 
-export const LANGS = { pl: "Polish", de: "German", es: "Spanish" };
+// Languages the app can show. Stories are written in English or Polish and are translated
+// into whichever of these the reader uses, unless they are already in it.
+export const LANGS = { en: "English", pl: "Polish", de: "German", es: "Spanish" };
+const srcOf = s => s.lang || "en";
 export const FIELDS = ["title", "sum", "what", "why", "bigger", "excerpt"];
 export const PROVIDER = (process.env.GOOD_THINGS_TRANSLATOR || "google").toLowerCase();
 const BATCH = 8, PARALLEL = 4;
@@ -21,7 +24,7 @@ const Item = z.object({
 });
 const Out = z.object({ translations: z.array(Item) });
 
-const system = lang => `You translate short news texts for Good Things, a calm positive-news app, from English into ${LANGS[lang]}.
+const system = lang => `You translate short news texts for Good Things, a calm positive-news app, into ${LANGS[lang]}. Each item says which language it is written in ("from").
 
 Translate each field faithfully and naturally, as a native ${LANGS[lang]} news editor would write it. Keep the meaning, facts, numbers, names and caveats exactly; do not add, drop or soften anything, and do not add hype. Keep the names of people, organisations and news outlets as they are; use the usual ${LANGS[lang]} names for countries and places. Headlines should read like ${LANGS[lang]} headlines (sentence case unless ${LANGS[lang]} requires otherwise). If a field is empty, return it empty.`;
 
@@ -39,7 +42,7 @@ export async function translateWithAI(stories, lang, log = console) {
   const chunks = [];
   for (let i = 0; i < stories.length; i += BATCH) chunks.push(stories.slice(i, i + BATCH));
   await pool(chunks.map(chunk => async () => {
-    const payload = chunk.map(s => Object.fromEntries([["id", s.id], ...FIELDS.map(f => [f, s[f] || ""])]));
+    const payload = chunk.map(s => Object.fromEntries([["id", s.id], ["from", LANGS[srcOf(s)]], ...FIELDS.map(f => [f, s[f] || ""])]));
     try {
       const res = await client.messages.parse({
         model: MODEL,
@@ -67,9 +70,9 @@ let googleBlockedUntil = 0;
 export const googleAvailable = () => Date.now() >= googleBlockedUntil;
 
 /** Translates one text; the endpoint returns [[["translated", "original", ...], ...], ...]. */
-export async function googleTranslateText(text, lang, fetchImpl = fetch) {
+export async function googleTranslateText(text, lang, fetchImpl = fetch, from = "en") {
   if (!text.trim()) return "";
-  const url = `${GOOGLE}?client=gtx&sl=en&tl=${lang}&dt=t&q=${encodeURIComponent(text)}`;
+  const url = `${GOOGLE}?client=gtx&sl=${from}&tl=${lang}&dt=t&q=${encodeURIComponent(text)}`;
   const res = await fetchImpl(url, { signal: AbortSignal.timeout(10000), headers: { "user-agent": "Mozilla/5.0 (GoodThingsNewsReader)" } });
   const body = await res.text();
   if (res.status === 429 || res.status === 403 || /google\.com\/sorry|<html/i.test(body.slice(0, 400))) throw new GoogleBlocked(`Google Translate refused the request (HTTP ${res.status})`);
@@ -87,9 +90,10 @@ export async function translateWithGoogle(stories, lang, log = console, fetchImp
     if (blocked) return;
     const fields = FIELDS.filter(f => s[f] && s[f].trim());
     try {
-      const joined = await googleTranslateText(fields.map(f => s[f].replace(/\s*\n\s*/g, " ")).join(SEP), lang, fetchImpl);
+      const from = srcOf(s);
+      const joined = await googleTranslateText(fields.map(f => s[f].replace(/\s*\n\s*/g, " ")).join(SEP), lang, fetchImpl, from);
       let parts = joined.split(/\n\s*\n/).map(x => x.trim());
-      if (parts.length !== fields.length) parts = await Promise.all(fields.map(f => googleTranslateText(s[f], lang, fetchImpl)));
+      if (parts.length !== fields.length) parts = await Promise.all(fields.map(f => googleTranslateText(s[f], lang, fetchImpl, from)));
       const out = { id: s.id, by: "google", kw: "" };
       for (const f of FIELDS) out[f] = "";
       fields.forEach((f, i) => { out[f] = parts[i]; });
@@ -125,7 +129,7 @@ export function createTranslator({ store = {}, translate = providerTranslate, en
       if (!Object.hasOwn(LANGS, lang) || !enabled()) return null;
       if (running.has(lang)) return running.get(lang);
       const have = store[lang] || {};
-      const missing = stories.filter(s => !have[s.id]);
+      const missing = stories.filter(s => srcOf(s) !== lang && !have[s.id]);
       if (!missing.length) return null;
       const started = Date.now();
       const job = translate(missing, lang, log)
@@ -138,6 +142,11 @@ export function createTranslator({ store = {}, translate = providerTranslate, en
         .finally(() => running.delete(lang));
       running.set(lang, job);
       return job;
+    },
+    /** How many of these stories need translating into `lang`, and how many are done. */
+    progress(stories, lang) {
+      const need = stories.filter(s => srcOf(s) !== lang);
+      return { done: need.filter(s => store[lang]?.[s.id]).length, total: need.length };
     },
     /** Adds `tr: {lang: {...}}` to each story that has a translation. */
     attach(stories, lang) {

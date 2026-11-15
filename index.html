@@ -468,14 +468,23 @@ const isLive=()=>LIVE.state==="live"||(LIVE.state==="loading"&&!!LIVE.updatedAt)
 const TRC=new Map();
 function setTr(s,lang,o){s.tr=Object.assign({},s.tr,{[lang]:o});TRC.set(s.id,Object.assign({},TRC.get(s.id),{[lang]:o}))}
 function normalize(x){if(x.tr)TRC.set(x.id,Object.assign({},TRC.get(x.id),x.tr));if(TRC.has(x.id))x.tr=Object.assign({},TRC.get(x.id),x.tr);return Object.assign({what:"",why:"",bigger:"",excerpt:"",also:[],moods:["hope"],kw:"",w:.5,read:null,author:"",tag:"Progress",country:"Worldwide",art:"lab"},x)}
-function applyLive(d){
+/* which story languages to show: the reader's choice, or by default English plus Polish for Polish readers */
+const STORY_LANGS=["en","pl"];
+const shownLangs=()=>new Set(S.prefs.srcLangs||(LANG==="pl"?["en","pl"]:["en"]));
+function filterLangs(){
+  if(!LIVE.all)return;const v=shownLangs();
   STORIES.forEach(s=>ARCHIVE.set(s.id,s));
-  STORIES.splice(0,STORIES.length,...d.stories.map(normalize));
+  STORIES.splice(0,STORIES.length,...LIVE.all.filter(s=>v.has(srcLang(s))));refreshDerived();
+}
+function applyLive(d){
+  LIVE.all=d.stories.map(normalize);
+  STORIES.forEach(s=>ARCHIVE.set(s.id,s));
+  STORIES.splice(0,STORIES.length,...LIVE.all.filter(s=>shownLangs().has(srcLang(s))));
   Object.assign(LIVE,{updatedAt:d.updatedAt,ai:d.ai,sources:d.sources||[],windowDays:d.windowDays||10});
   refreshDerived();
 }
 /* keeps the last list on the device, so the app opens with stories even offline */
-function cacheLive(d){store.set("gt-stories",JSON.stringify({...d,stories:STORIES,cachedAt:new Date().toISOString()}));LIVE.cachedAt=null;updateWidget()}
+function cacheLive(d){store.set("gt-stories",JSON.stringify({...d,stories:LIVE.all||STORIES,cachedAt:new Date().toISOString()}));LIVE.cachedAt=null;updateWidget()}
 function updateWidget(){if(!NATIVE||!STORIES.length)return;const s=ranked().list[0];if(s)GTNative.widget({id:s.id,title:st(s,"title"),source:s.source,url:s.url,lang:LANG,updated:new Date().toISOString()})}
 /* the news server: same address as the app when it serves the page, otherwise the default local port */
 const API_BASES=CFG.apiBase?[CFG.apiBase.replace(/\/?$/,"/")]:APP?[]:[...new Set([...(location.protocol.startsWith("http")?[""]:[]),"http://localhost:8787/"])];
@@ -490,40 +499,41 @@ async function api(path,opts){
 async function loadLive(force){
   const before=new Set(STORIES.map(s=>s.id)),was=LIVE.state;LIVE.state="loading";render(1);
   try{
-    const d=await api((force?"api/refresh":"api/stories")+"?lang="+LANG,{method:force?"POST":"GET",headers:{accept:"application/json"}});
+    const d=await api((force?"api/refresh":"api/stories")+"?lang="+LANG+"&src="+[...shownLangs()].join(","),{method:force?"POST":"GET",headers:{accept:"application/json"}});
     if(!d.stories||!d.stories.length){LIVE.state=was==="live"?"live":"error";LIVE.sources=d.sources||[];LIVE.error=t("No outlet could be reached");render(1);if(force)toast(t("The news server couldn't reach any outlet. Check its window for errors."));return}
     applyLive(d);LIVE.state="live";LIVE.error="";LIVE.offline=false;cacheLive(d);LIVE.translating=!!(d.translation&&d.translation.translating);LIVE.trAvailable=!d.translation||d.translation.available;LIVE.trDone=d.translation?d.translation.done:0;render(1);
-    if(LIVE.translating){clearTimeout(loadLive.poll);loadLive.poll=setTimeout(()=>loadLive(false),4000)}
-    else if(LANG!=="en"&&!LIVE.trAvailable)browserTranslate();
+    if(LIVE.translating){clearTimeout(loadLive.poll);loadLive.poll=setTimeout(()=>loadLive(false),2500)}
+    else if(!LIVE.trAvailable)browserTranslate();
     if(force){const n=STORIES.filter(s=>!before.has(s.id)).length;toast(d.throttled?t("Just updated. Check again in a minute."):n?t("New stories: {0}",n):t("No new stories yet. Good news takes its time."))}
     if(d.refreshing)setTimeout(()=>loadLive(false),20000);
   }catch(e){LIVE.state=LIVE.updatedAt?"live":"offline";LIVE.error=e.message;if(LIVE.updatedAt)LIVE.offline=true;render(1);if(force)toast(LIVE.updatedAt?t("Couldn't update. Check your connection."):APP?t("Couldn't reach the news service. Check your connection."):t("Can't find the news server. Start it, then open http://localhost:8787"))}
 }
 /* fallback when the server has no AI: the browser's built-in, on-device Translator (Chrome and Edge 138+) */
 const BTR={running:false,made:{}};
-async function browserTranslator(lang){
-  if(!("Translator" in self))return null;
-  if(!(lang in BTR.made))BTR.made[lang]=(async()=>{try{if(await Translator.availability({sourceLanguage:"en",targetLanguage:lang})==="unavailable")return null;return await Translator.create({sourceLanguage:"en",targetLanguage:lang})}catch(e){return null}})();
-  const r=await BTR.made[lang];if(!r)delete BTR.made[lang];return r;
+async function browserTranslator(lang,from="en"){
+  if(!("Translator" in self)||from===lang)return null;const key=from+">"+lang;
+  if(!(key in BTR.made))BTR.made[key]=(async()=>{try{if(await Translator.availability({sourceLanguage:from,targetLanguage:lang})==="unavailable")return null;return await Translator.create({sourceLanguage:from,targetLanguage:lang})}catch(e){return null}})();
+  const r=await BTR.made[key];if(!r)delete BTR.made[key];return r;
 }
 async function browserTranslate(){
-  const lang=LANG;if(BTR.running||lang==="en"||!isLive())return;
-  const todo=STORIES.filter(s=>!(s.tr&&s.tr[lang]));if(!todo.length)return;
-  const tr=await browserTranslator(lang);if(!tr)return;
+  const lang=LANG;if(BTR.running||!isLive())return;
+  const todo=STORIES.filter(s=>srcLang(s)!==lang&&!(s.tr&&s.tr[lang]));if(!todo.length)return;
+  const tools={};for(const from of new Set(todo.map(srcLang)))tools[from]=await browserTranslator(lang,from);
+  if(!Object.values(tools).some(Boolean))return;
   BTR.running=true;render(1);
-  try{let n=0;for(const s of todo){if(LANG!==lang)break;const o={by:"browser",kw:""};
+  try{let n=0;for(const s of todo){if(LANG!==lang)break;const tr=tools[srcLang(s)];if(!tr)continue;const o={by:"browser",kw:""};
     for(const f of ["title","sum","excerpt","what","why","bigger"])o[f]=s[f]?await tr.translate(s[f]):"";
     setTr(s,lang,o);if(++n%5===0)render(1)}}
   catch(e){}finally{BTR.running=false;render(1)}
 }
 /* ---------- saved on the device ---------- */
-function stateJSON(){return JSON.stringify({v:1,prefs:{cats:[...S.prefs.cats],sources:S.prefs.sources,regions:[...S.prefs.regions],amount:S.prefs.amount},
+function stateJSON(){return JSON.stringify({v:1,prefs:{cats:[...S.prefs.cats],sources:S.prefs.sources,regions:[...S.prefs.regions],amount:S.prefs.amount,srcLangs:S.prefs.srcLangs||null},
   cols:S.cols,read:S.read.slice(-500),like:S.like,hidden:[...S.hidden],muted:[...S.muted],notif:S.notif,lang:LANG,dark:S.dark,onboarded:S.onboarded,name:S.name||"",lock:!!S.lock})}
 let lastSaved="";
 function persistSoon(){clearTimeout(persistSoon.t);persistSoon.t=setTimeout(()=>{const j=stateJSON();if(j!==lastSaved){lastSaved=j;store.set("gt-state",j)}},300)}
 async function loadState(){
   try{const j=await store.get("gt-state");if(j){const d=JSON.parse(j);lastSaved=j;
-    Object.assign(S.prefs,{cats:new Set(d.prefs.cats),sources:d.prefs.sources,regions:new Set(d.prefs.regions),amount:d.prefs.amount});
+    Object.assign(S.prefs,{cats:new Set(d.prefs.cats),sources:d.prefs.sources,regions:new Set(d.prefs.regions),amount:d.prefs.amount,srcLangs:d.prefs.srcLangs||null});
     Object.assign(S,{cols:d.cols,read:d.read,like:d.like||{},hidden:new Set(d.hidden),muted:new Set(d.muted),notif:Object.assign(S.notif,d.notif),dark:d.dark,onboarded:!!d.onboarded,name:d.name||"",lock:!!d.lock});
     if(d.lang&&I18N.langs[d.lang]){LANG=d.lang;document.documentElement.lang=LANG}
     if(typeof d.dark==="boolean")document.documentElement.classList.toggle("dark",d.dark)}}catch(e){}
@@ -561,8 +571,8 @@ const when=s=>s.published?ago(s.published):fmt(s.date);
 const pic=s=>(s.imgLocal||s.img)?`<img src="${esc(s.imgLocal||s.img)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg');this.remove()">`:"";
 function liveBar(){
   const n=new Set(STORIES.map(s=>s.source)).size,busy=LIVE.state==="loading";
-  const trn=LANG!=="en"&&LIVE.state==="live"&&(LIVE.translating||BTR.running)?STORIES.filter(s=>s.tr&&s.tr[LANG]).length:-1;
-  const msg=busy?t("Checking outlets for new good news…"):LIVE.offline&&LIVE.updatedAt?t("Offline · stories from {0}",ago(LIVE.updatedAt)):trn>-1?t("Translating stories into {0}… {1}/{2}",I18N.langs[LANG],trn,STORIES.length):LIVE.state==="live"?t("Live from {0} outlets · updated {1}",n,ago(LIVE.updatedAt)):LIVE.state==="offline"?(APP?t("Sample stories · you're offline"):t("Sample stories · news server not found")):LIVE.state==="error"?t("Sample stories · live news unavailable right now"):t("Sample stories");
+  const need=STORIES.filter(s=>srcLang(s)!==LANG),trn=need.length&&LIVE.state==="live"&&(LIVE.translating||BTR.running)?need.filter(s=>s.tr&&s.tr[LANG]).length:-1;
+  const msg=busy?t("Checking outlets for new good news…"):LIVE.offline&&LIVE.updatedAt?t("Offline · stories from {0}",ago(LIVE.updatedAt)):trn>-1?t("Translating stories into {0}… {1}/{2}",I18N.langs[LANG],trn,need.length):LIVE.state==="live"?t("Live from {0} outlets · updated {1}",n,ago(LIVE.updatedAt)):LIVE.state==="offline"?(APP?t("Sample stories · you're offline"):t("Sample stories · news server not found")):LIVE.state==="error"?t("Sample stories · live news unavailable right now"):t("Sample stories");
   return `<div class="livebar"><i class="dot ${busy||trn>-1?"busy":LIVE.state==="live"?"":"off"}"></i><span class="grow">${msg}</span><button data-a="refresh" class="${busy?"spin":""}" ${busy?"disabled":""} aria-label="${t("Refresh")}">${ic("refresh")}${t("Refresh")}</button></div>`;
 }
 const CATS=["Environment & Nature","Science","Health & Medicine","Technology","Animals","World","Humanity & Community","Space","Culture","Education","Sports","Business & Economy","Local Communities","Innovation","Inspiring People","Conservation"];
@@ -647,15 +657,20 @@ function markRead(id){if(!S.read.includes(id))S.read.push(id)}
 const LOC={en:"en-GB",pl:"pl-PL",de:"de-DE",es:"es-ES"};
 let LANG="en";
 const t=(k,...a)=>{const s=(LANG!=="en"&&I18N.ui[LANG]&&I18N.ui[LANG][k])||k;return s.replace(/\{(\d)\}/g,(m,i)=>a[i])};
-const st=(s,f)=>(LANG!=="en"&&((I18N.stories[LANG]&&I18N.stories[LANG][s.id]&&I18N.stories[LANG][s.id][f])||(s.tr&&s.tr[LANG]&&s.tr[LANG][f])))||s[f]||"";
+/* story text in the reader's language: as published if it is already in it, otherwise the translation when there is one */
+const srcLang=s=>s.lang||"en";
+const st=(s,f)=>{if(srcLang(s)===LANG)return s[f]||"";
+  const sample=I18N.stories[LANG]&&I18N.stories[LANG][s.id]&&I18N.stories[LANG][s.id][f];if(sample)return sample;
+  const x=s.tr&&s.tr[LANG];return (x&&x[f])||s[f]||""};
+const langName=code=>{try{return new Intl.DisplayNames([LOC[LANG]],{type:"language"}).of(code)}catch(e){return code}};
 /* the translation note shown on an article in Polish, German or Spanish */
 function trNote(s){
-  if(LANG==="en")return "";
+  const src=srcLang(s);if(src===LANG)return "";
   if(!s.live)return t("Translated by AI. The original article is in English.");
-  const x=s.tr&&s.tr[LANG];
-  if(x)return x.by==="browser"?t("Translated on this device by your browser from the publisher's English text."):x.by==="google"?t("Machine-translated by Google Translate from the publisher's English text."):t("Translated by AI from the publisher's English text.");
-  if(LIVE.translating||BTR.running)return t("Translation in progress. Shown in English for now.");
-  return t("Shown in English, as published. Translation isn't available right now. Try again later.");
+  const x=s.tr&&s.tr[LANG],from=langName(src);
+  if(x)return x.by==="browser"?t("Translated on this device by your browser from the publisher's original ({0}).",from):x.by==="google"?t("Machine-translated by Google Translate from the publisher's original ({0}).",from):t("Translated by AI from the publisher's original ({0}).",from);
+  if(LIVE.translating||BTR.running)return t("Translation in progress. Shown in the original language ({0}) for now.",from);
+  return t("Shown as published ({0}). Translation isn't available right now. Try again later.",from);
 }
 
 /* ---------- components ---------- */
@@ -737,10 +752,10 @@ V.article=()=>{
    <div class="byline"><span>${t("Published by")} <b>${esc(s.source)}</b>${s.author?` · ${esc(s.author)}`:""}</span><span>${fmt(s.date)}${s.read?" · "+t("{0} min read at the source",s.read):""}</span></div>
    ${s.serious?`<div class="context">${t("The subject here is serious. It is included because the development itself is constructive.")}</div>`:""}
    ${s.what?`<div class="summary"><div class="sumhead"><span class="ai">${t("AI-generated summary")}</span><span class="small muted">${t("Not original journalism")}</span></div>
-    ${LANG!=="en"?`<p class="small muted" style="font-size:13px">${trNote(s)}</p>`:""}
+    ${trNote(s)?`<p class="small muted" style="font-size:13px">${trNote(s)}</p>`:""}
     <div><h4>${t("What happened")}</h4><p>${esc(st(s,"what"))}</p></div><div><h4>${t("Why it matters")}</h4><p>${esc(st(s,"why"))}</p></div><div><h4>${t("The bigger picture")}</h4><p>${esc(st(s,"bigger"))}</p></div></div>`
     :!(st(s,"excerpt")||st(s,"sum"))?`<div class="pubbox"><p>${t("This story was found through a news search, which shares only the headline. Read the full story at {0}.",esc(s.source))}</p></div>`
-    :`<div class="pubbox"><div class="eyebrow">${t("From the publisher")}</div><p>${esc(st(s,"excerpt")||st(s,"sum"))}</p><p class="small muted">${t("The publisher's own description, not an AI summary.")}${LANG!=="en"?" "+trNote(s):""}</p></div>`}
+    :`<div class="pubbox"><div class="eyebrow">${t("From the publisher")}</div><p>${esc(st(s,"excerpt")||st(s,"sum"))}</p><p class="small muted">${t("The publisher's own description, not an AI summary.")}${trNote(s)?" "+trNote(s):""}</p></div>`}
    <a class="btn" href="${s.url}" target="_blank" rel="noopener">${t("Read original article")} ${ic("ext")}</a>
    <div><div class="eyebrow" style="margin-bottom:8px">${t("Also reported by")}</div><div class="also">${s.also.length?s.also.map(a=>`<a href="${a[1]}" target="_blank" rel="noopener">${esc(a[0])} ${ic("ext")}</a>`).join(""):`<span class="muted">${s.live?t("No other outlet in the app has reported this yet."):t("One source so far. Not yet independently confirmed.")}</span>`}</div></div>
    <div><div class="eyebrow" style="margin-bottom:8px">${t("Tune your feed")}</div><div class="tune">
@@ -862,6 +877,8 @@ V.personal=()=>bar(t("Personalisation"))+`<div class="pad" style="padding-top:8p
  <p class="small muted">${t("Your topics appear more often. About one story in five comes from outside them, so the feed doesn't narrow.")}</p>
  <div class="eyebrow">${t("Regions you want more from")}</div>${regionPicker()}<p class="small muted">${S.prefs.regions.size?t("These countries get a lift in your feed. Everything else still appears."):t("Nothing chosen, so stories come from everywhere equally.")}</p>
  <div class="eyebrow">${t("Stories per day")}</div>${amounts()}
+ <div class="eyebrow">${t("Stories originally in")}</div><div class="chips">${STORY_LANGS.map(l=>`<button class="chip" data-a="srcLang" data-l="${l}" aria-pressed="${shownLangs().has(l)}">${I18N.langs[l]}</button>`).join("")}</div>
+ <p class="small muted">${t("Stories written in another language are translated for you when possible.")}</p>
  <div class="eyebrow">${t("Showing fewer of")}</div><div class="chips">${[...S.muted].map(c=>`<button class="chip" data-a="mute" data-c="${esc(c)}">${esc(t(c))} ×</button>`).join("")||`<span class="muted small">${t("Nothing muted. Use “Show fewer stories” on any article.")}</span>`}</div>
  <div class="rows"><button class="row" data-a="go" data-to="sources">${ic("star")}<span class="grow"><b>${t("My Sources")}</b><div class="sub">${t("Followed: {0} · Hidden: {1}",S.prefs.sources.length,S.hidden.size)}</div></span>${ic("chev")}</button></div></div>`;
 V.notifs=()=>{const n=S.notif,seg=(k,opts)=>`<div class="seg">${opts.map(o=>`<button data-a="notif" data-k="${k}" data-v="${o}" aria-pressed="${n[k]===o}">${t(o)}</button>`).join("")}</div>`;
@@ -909,7 +926,8 @@ const A={
   newcolSheet:()=>sheet(`<h3>${t("New collection")}</h3><form class="searchbar" data-form="newcol"><input type="text" id="newcol" placeholder="${t("For example, Inspiring stories")}" aria-label="${t("New collection name")}"><button aria-label="${t("Create")}">${ic("plus")}</button></form><button class="btn ghost" data-a="closeSheet">${t("Cancel")}</button>`),
   closeSheet,
   langSheet:()=>sheet(`<h3>${t("Language")}</h3><p class="small muted">${t("Changes the app and every story summary. Links still open the original article.")}</p><div class="rows">${Object.entries(I18N.langs).map(([k,l])=>`<button class="row" data-a="lang" data-l="${k}"><span class="grow"><b>${l}</b></span>${LANG===k?ic("check"):""}</button>`).join("")}</div><button class="btn ghost" data-a="closeSheet">${t("Done")}</button>`),
-  lang:d=>{LANG=d.l;document.documentElement.lang=LANG;closeSheet();render(1);renderGuide();if(LANG!=="en"){browserTranslator(LANG);if(LIVE.state==="live")loadLive(false)}},
+  lang:d=>{LANG=d.l;document.documentElement.lang=LANG;closeSheet();render(1);renderGuide();filterLangs();render(1);STORY_LANGS.forEach(f=>browserTranslator(LANG,f));if(LIVE.state==="live")loadLive(false)},
+  srcLang:d=>{const v=shownLangs();v.has(d.l)?v.delete(d.l):v.add(d.l);if(!v.size)return;S.prefs.srcLangs=[...v];filterLangs();render(1);if(LIVE.state==="live")loadLive(false)},
   follow:d=>{const f=S.prefs.sources,i=f.indexOf(d.src);if(i>-1){f.splice(i,1);toast(t("Removed {0} from your sources",d.src))}else{f.push(d.src);S.hidden.delete(d.src);toast(t("Following {0}",d.src))}render(1)},
   hide:d=>{S.hidden.add(d.src);const i=S.prefs.sources.indexOf(d.src);if(i>-1)S.prefs.sources.splice(i,1);toast(t("{0} hidden. Undo in My Sources.",d.src));A.back()},
   unhide:d=>{S.hidden.delete(d.src);render(1)},

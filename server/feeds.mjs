@@ -9,7 +9,10 @@
 //   small local papers; only headlines with a positive signal and no negative one are kept.
 import { readFileSync } from "node:fs";
 
-const feed = (source, url, kind = "general") => ({ source, url, kind });
+// lang: the language the outlet writes in ("en" or "pl"). It picks the filter rules and the
+// translation direction.
+const feed = (source, url, kind = "general", lang = "en") => ({ source, url, kind, lang });
+const pl = (source, url, kind = "general") => feed(source, url, kind, "pl");
 
 const DEFAULT_FEEDS = [
   // Constructive and solutions journalism
@@ -66,13 +69,27 @@ const DEFAULT_FEEDS = [
   feed("CBC News", "https://www.cbc.ca/webfeed/rss/rss-topstories"),
   feed("RNZ", "https://www.rnz.co.nz/rss/national.xml"),
   feed("Notes from Poland", "https://notesfrompoland.com/feed/"),
+
+  // Polish outlets (in Polish)
+  pl("Nauka w Polsce", "https://naukawpolsce.pl/rss.xml"),
+  pl("Crazy Nauka", "https://www.crazynauka.pl/feed/"),
+  pl("SmogLab", "https://smoglab.pl/feed/"),
+  pl("Gramwzielone.pl", "https://www.gramwzielone.pl/feed"),
+  pl("WysokieNapiecie.pl", "https://wysokienapiecie.pl/feed/"),
+  pl("Spider's Web", "https://spidersweb.pl/feed"),
+  pl("Bankier.pl", "https://www.bankier.pl/rss/wiadomosci.xml"),
+  pl("OKO.press", "https://oko.press/feed"),
+  pl("RMF24", "https://www.rmf24.pl/feed"),
+  pl("TVN24", "https://tvn24.pl/najnowsze.xml"),
+  pl("Polsat News", "https://www.polsatnews.pl/rss/wszystkie.xml"),
+  pl("Gazeta.pl", "https://rss.gazeta.pl/pub/rss/wiadomosci.xml"),
 ];
 
 // Google News searches. Each runs in one Google News edition and covers the last 7 days.
 const google = (label, q, edition = "US:en") => {
   const [gl, hl] = edition.split(":");
   const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q + " when:7d")}&hl=${hl}-${gl}&gl=${gl}&ceid=${gl}:${hl}`;
-  return { source: "Google News", label: `${label} (${gl})`, url, kind: "search" };
+  return { source: "Google News", label: `${label} (${gl})`, url, kind: "search", lang: hl };
 };
 const TOPIC_SEARCHES = [
   ["Wildlife recovery", '"endangered" (recovery OR rebound OR "back from" OR "returns to")'],
@@ -88,9 +105,24 @@ const TOPIC_SEARCHES = [
 ];
 const BROAD_POSITIVE = '("good news" OR breakthrough OR "record low" OR restored OR milestone OR volunteers OR "first ever")';
 const EDITIONS = ["GB:en", "IN:en", "AU:en", "CA:en", "IE:en", "KE:en", "NG:en", "ZA:en", "PH:en", "SG:en"];
+// Polish Google News (edition PL, results in Polish). Quoted phrases are matched as written,
+// so common word forms are listed with OR.
+const POLISH_SEARCHES = [
+  ["Dobre wiadomości", '"dobre wiadomości" OR "dobra wiadomość" OR "pozytywne wiadomości"'],
+  ["Powrót gatunków", '(wróciły OR powróciły OR wraca OR "po latach") (gatunek OR ptaki OR zwierzęta OR żubry OR bobry OR rysie)'],
+  ["Przyroda i ochrona", '(renaturyzacja OR "park narodowy" OR rezerwat OR "ochrona przyrody") (sukces OR nowy OR powstał OR rośnie)'],
+  ["Medycyna", '(przełom OR "obiecujące wyniki" OR "nowa terapia" OR "nowy lek") (leczenie OR pacjenci OR badania)'],
+  ["Polscy naukowcy", '("polscy naukowcy" OR "polska naukowczyni" OR "polski naukowiec") (odkrycie OR sukces OR nagroda OR opracowali)'],
+  ["Energia odnawialna", '(rekord OR rekordowa OR rekordowy) (fotowoltaika OR OZE OR "farmy wiatrowe" OR "energia z wiatru")'],
+  ["Spadające wskaźniki", '(najniższe OR najniższy OR "rekordowo niskie") (bezrobocie OR ubóstwo OR emisje OR "liczba wypadków")'],
+  ["Pomoc i życzliwość", '(wolontariusze OR zbiórka OR mieszkańcy) (pomogli OR zebrali OR uratowali OR podarowali)'],
+  ["Ratunek", '(uratowali OR uratował OR uratowała) (dziecko OR psa OR zwierzę OR życie)'],
+  ["Uczniowie i edukacja", '(uczniowie OR studenci) (zwycięstwo OR medal OR sukces) (olimpiada OR konkurs OR mistrzostwa)'],
+];
 const DEFAULT_SEARCHES = [
   ...TOPIC_SEARCHES.map(([label, q]) => google(label, q)),
   ...EDITIONS.map(e => google("Good news", BROAD_POSITIVE, e)),
+  ...POLISH_SEARCHES.map(([label, q]) => google(label, q, "PL:pl")),
 ];
 
 // Outlets never shown, even when a search finds them: tabloids that reliability reviews flag,
@@ -100,7 +132,7 @@ export const BLOCKED_SOURCES = [
   "PR Newswire", "GlobeNewswire", "Business Wire", "Accesswire", "EIN Presswire", "Newsfile", "PRWeb", "openPR",
 ];
 
-// GOOD_THINGS_FEEDS can point to a JSON file with your own list (same shape: source, url, kind).
+// GOOD_THINGS_FEEDS can point to a JSON file with your own list (same shape: source, url, kind, lang).
 // GOOD_THINGS_SEARCH=off turns the Google News searches off.
 export const FEEDS = process.env.GOOD_THINGS_FEEDS
   ? JSON.parse(readFileSync(process.env.GOOD_THINGS_FEEDS, "utf8"))

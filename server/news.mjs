@@ -49,11 +49,12 @@ export async function collect({ feeds = FEEDS, previous = null, now = Date.now()
         const key = it.url.replace(/[?#].*$/, "");
         if (seen.has(key)) continue;
         seen.add(key);
-        const sc = screen(it, feed.kind);
+        const lang = feed.lang || "en";
+        const sc = screen(it, feed.kind, lang);
         // With AI on, the model makes the final call on anything that isn't obviously out.
         const pass = sc.keep || (ai && !/clickbait|not a news story|too little/.test(sc.reason || "") && (feed.kind === "positive" || /no clear positive/.test(sc.reason)));
         if (!pass) continue;
-        candidates.push({ ...it, id: storyId(key), source, kind: feed.kind, heuristicKeep: sc.keep });
+        candidates.push({ ...it, id: storyId(key), source, kind: feed.kind, lang, heuristicKeep: sc.keep });
         kept++;
       }
       status.push({ source: feed.label || feed.source, kind: feed.kind, url: feed.url, ok: true, items: items.length, candidates: kept });
@@ -79,11 +80,11 @@ export async function collect({ feeds = FEEDS, previous = null, now = Date.now()
     const r = reviews.get(c.id);
     if (r && (!r.keep || r.misleading || !r.headline_accurate)) continue;
     if (!r && !c.heuristicKeep) continue;
-    const h = classifyHeuristic(c);
+    const h = classifyHeuristic(c, c.lang);
     const cat = r && CATEGORIES.includes(r.category) ? r.category : h.cat;
     const country = r && (GEO[r.country] || r.country === "Worldwide") ? r.country : detectCountry(c);
     stories.push({
-      id: c.id, live: true, ai: Boolean(r),
+      id: c.id, live: true, ai: Boolean(r), lang: c.lang,
       cat, tag: r?.impact || h.tag, art: ART[cat] || "lab",
       country, geo: GEO[country] || null,
       title: c.title,

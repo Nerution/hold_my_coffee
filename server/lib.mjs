@@ -75,14 +75,30 @@ const POSITIVE = words(["record", "recover", "restor", "rebound", "return", "bre
 const CLICKBAIT = /you won'?t believe|shocking|jaw[- ]dropping|mind[- ]blowing|this one (trick|thing)|what happened next|will blow your mind|!!|\?\?|\b[A-Z]{4,}\b.*\b[A-Z]{4,}\b.*\b[A-Z]{4,}\b/;
 const LISTICLE = /^(\d+|ten|five|seven) (best|things|ways|reasons)|quiz|horoscope|podcast|newsletter|crossword|sponsored|deal of|sale\b|gift guide|photos of the week|in pictures/i;
 
-export function screen(item, kind) {
-  if (kind === "search") return screenHeadline(item);
+/* Polish rules. Polish words change their endings, so these are word beginnings (stems),
+   matched only at the start of a word. \b doesn't work with letters like ą or ł, hence the lookbehind. */
+const plWords = list => new RegExp(`(?<!\\p{L})(${list.join("|")})`, "iu");
+const NEGATIVE_PL = plWords(["zgin", "zmarł", "zmarl", "nie żyj", "śmier", "smierc", "zabi", "zabój", "morderst", "strzelanin", "wojn", "atak", "zamach", "bomb", "terror", "przemoc", "gwałt", "pobi", "napad", "wypad", "katastrof", "tragedi", "tragiczn", "pożar", "powodz", "powódź", "huragan", "epidemi", "pandemi", "kryzys", "afer", "skandal", "oszust", "oszuk", "korupc", "zatrzyman", "areszt", "wyrok", "zarzut", "pozew", "zwolnie", "upadłoś", "bankruct", "recesj", "inflacj", "drożej", "najgorsz", "groź", "zagroż", "niebezpiecz", "ostrzeg", "alarm", "toksyczn", "zatru", "wymarł", "wyginięci", "strat", "porażk", "ofiar", "rann", "zakaz", "zamieszk", "konflikt", "przestęp", "nie żyją"]);
+const POSITIVE_PL = plWords(["rekord", "sukces", "przełom", "odkry", "uratow", "ocal", "pomog", "wolontariusz", "zbiórk", "zebral", "darowizn", "przekazal", "przekazał", "powr", "wróci", "wraca", "odtworz", "odbudow", "renaturyzac", "rewitaliz", "chronion", "ochron", "rezerwat", "park narodow", "zasadz", "posadz", "drzew", "fotowoltai", "oze", "odnawialn", "farm wiatrow", "wiatrak", "czyst", "nagrod", "medal", "zwycię", "wygra", "po raz pierwszy", "najniższ", "mniej wypadk", "mniej ofiar", "bezpłatn", "darmow", "leczeni", "terapi", "szczepion", "innowac", "wynalaz", "nadziej", "inspir", "dobr[aey] wiadomo", "pozytywn", "rośnie", "wzrósł", "wzrosł", "wzrost", "popraw", "lepsz", "udało się", "historyczn", "otwar", "nowy park", "uczniowie zdobyli", "spadł", "spadek bezroboc"]);
+const CLICKBAIT_PL = /nie uwierzysz|szok|szokując|musisz to zobaczyć|zobacz,? co|tego się nie spodziewa|internauci oszaleli|hit internetu|!!|\?\?/i;
+const LISTICLE_PL = /horoskop|quiz|kupon|promocj|wyprzedaż|sprawdź (ceny|wyniki)|lotto|program tv|pogoda na|prognoza pogody|podcast|newsletter|galeria zdjęć|zdjęcia dnia|krzyżówk/i;
+
+const RULES = {
+  en: { neg: NEGATIVE, pos: POSITIVE, clickbait: CLICKBAIT, listicle: LISTICLE },
+  pl: { neg: NEGATIVE_PL, pos: POSITIVE_PL, clickbait: CLICKBAIT_PL, listicle: LISTICLE_PL },
+};
+const rulesFor = lang => RULES[lang] || RULES.en;
+const count = (re, text) => (text.match(new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g")) || []).length;
+
+export function screen(item, kind, lang = "en") {
+  const { neg: NEG, pos: POS, clickbait: CLICK, listicle: LIST } = rulesFor(lang);
+  if (kind === "search") return screenHeadline(item, lang);
   const hay = `${item.title}. ${item.description}`;
-  const neg = (hay.match(new RegExp(NEGATIVE.source, "gi")) || []).length;
-  const pos = (hay.match(new RegExp(POSITIVE.source, "gi")) || []).length;
-  const titleNeg = NEGATIVE.test(item.title);
-  if (CLICKBAIT.test(item.title)) return { keep: false, reason: "clickbait headline" };
-  if (LISTICLE.test(item.title)) return { keep: false, reason: "not a news story" };
+  const neg = count(NEG, hay);
+  const pos = count(POS, hay);
+  const titleNeg = NEG.test(item.title);
+  if (CLICK.test(item.title)) return { keep: false, reason: "clickbait headline" };
+  if (LIST.test(item.title)) return { keep: false, reason: "not a news story" };
   if (item.description.length < 40) return { keep: false, reason: "too little text to judge" };
   if (kind === "positive") return neg >= 3 || (titleNeg && pos === 0) ? { keep: false, reason: "reads as negative news" } : { keep: true, pos, neg };
   if (titleNeg || neg > 1) return { keep: false, reason: "reads as negative news" };
@@ -90,12 +106,13 @@ export function screen(item, kind) {
 }
 
 /** Search results carry only a headline, and the search itself already asked for good news. */
-function screenHeadline(item) {
-  if (CLICKBAIT.test(item.title)) return { keep: false, reason: "clickbait headline" };
-  if (LISTICLE.test(item.title)) return { keep: false, reason: "not a news story" };
-  if (NEGATIVE.test(item.title)) return { keep: false, reason: "reads as negative news" };
+function screenHeadline(item, lang) {
+  const { neg: NEG, pos: POS, clickbait: CLICK, listicle: LIST } = rulesFor(lang);
+  if (CLICK.test(item.title)) return { keep: false, reason: "clickbait headline" };
+  if (LIST.test(item.title)) return { keep: false, reason: "not a news story" };
+  if (NEG.test(item.title)) return { keep: false, reason: "reads as negative news" };
   if (item.title.split(" ").length < 5) return { keep: false, reason: "too little text to judge" };
-  return POSITIVE.test(item.title) ? { keep: true, pos: 1, neg: 0 } : { keep: false, reason: "no clear positive development" };
+  return POS.test(item.title) ? { keep: true, pos: 1, neg: 0 } : { keep: false, reason: "no clear positive development" };
 }
 
 /** Google News headlines end with " - Outlet name"; returns the headline without it. */
@@ -132,10 +149,38 @@ const TAG_RULES = [
   ["Milestone", /milestone|record|wins?\b|won\b|anniversary|historic/i],
   ["Good Trend", /falls?|fell|lowest|decline in|drop in|rising|rise in|trend|more and more|fewer/i],
 ];
-export const classifyHeuristic = item => {
+const pl = re => new RegExp(`(?<!\\p{L})(${re})`, "iu");
+const CAT_RULES_PL = [
+  ["Space", pl("kosm|nasa|esa|polsa|orbit|planet|księżyc|mars|astronom|teleskop|satelit|rakiet")],
+  ["Health & Medicine", pl("zdrow|medy|lekar|szpital|pacjent|nowotw|chorob|terapi|leczeni|szczepion|operacj|serc|onkolog")],
+  ["Conservation", pl("ochron|zagrożon|gatun|rezerwat|park narodow|siedlisk|kłusow|reintrodukc|żubr|ryś|rysi")],
+  ["Animals", pl("zwierz|ptak|ptasz|pies|psa|psy|kot|koń|konie|bocian|fok|wilk|wilcz|niedźwied|jeż|sow|bóbr|bobr|delfin|wieloryb|żółw")],
+  ["Environment & Nature", pl("klimat|emisj|węgl|oze|fotowoltai|wiatr|las|drzew|rzek|morz|plastik|recykling|smog|powietrz|przyrod|środowisk|zielon|bałtyk")],
+  ["Education", pl("szkoł|uczni|uczeń|nauczyciel|edukac|uczeln|student|olimpiad|matur|stypend|bibliotek")],
+  ["Technology", pl("technolog|robot|sztuczn[a-ząćęłńóśźż]* inteligenc|komputer|aplikacj|internet|cyfrow|dron|bateri|akumulator|chip")],
+  ["Sports", pl("sport|olimp|mistrz|medal|piłk|siatk|tenis|maraton|skocz|kolarst|reprezentac|lekkoatlet")],
+  ["Culture", pl("kultur|muze|muzyk|film|książk|teatr|festiwal|sztuk|artyst|zabyt|koncert|pisarz|poet")],
+  ["Business & Economy", pl("gospodar|firm|biznes|prac[ay]|bezroboc|płac|wynagrodz|eksport|inwestyc|pkb|ubóstw|zarobk")],
+  ["Science", pl("nauk|badacz|naukow|odkry|badani|uniwersytet|archeolog|fizy|chemi|biolog|polsk[a-ząćęłńóśźż]* akademi")],
+  ["Local Communities", pl("gmin|miast|mieszkańc|sąsiad|wieś|wsi|osiedl|radn|lokaln|sołectw")],
+  ["Humanity & Community", pl("wolontariusz|zbiórk|charyt|fundacj|pomoc|bezdomn|uchodźc|darowizn|życzliw|seniorom")],
+  ["Inspiring People", pl("\\d+-lat|nastolat|seniork|dziewczyn|chłop|kobiet[ay] któr|mężczyzn[ay] któr")],
+];
+const TAG_RULES_PL = [
+  ["Breakthrough", pl("przełom|po raz pierwszy|pierwsz[a-ząćęłńóśźż]* na świecie|wyleczy")],
+  ["Scientific Discovery", pl("odkry|nowy gatunek|naukowcy (ustalili|wykazali)|badanie (wykazało|pokazuje)")],
+  ["Conservation Success", pl("ochron|chronion|reintrodukc|populacja (rośnie|wzrosła)")],
+  ["Recovery", pl("odbudow|odtworz|renaturyzac|rewitaliz|powr|wróci|wraca|odzysk")],
+  ["Human Kindness", pl("pomog|życzliw|wolontariusz|zbiórk|podarow|przekaza|bezinteresown")],
+  ["Community Win", pl("mieszkańc|społeczno|lokaln|sąsiad|gmin|wspólnie")],
+  ["Milestone", pl("rekord|kamień milowy|zwycię|wygra|medal|historyczn|jubileusz")],
+  ["Good Trend", pl("spad|najniższ|mniej|rośnie|wzrost|coraz więcej|coraz mniej")],
+];
+export const classifyHeuristic = (item, lang = "en") => {
   const hay = `${item.title} ${item.description} ${item.categories.join(" ")}`;
-  const cat = (CAT_RULES.find(([, r]) => r.test(hay)) || ["World"])[0];
-  const tag = (TAG_RULES.find(([, r]) => r.test(hay)) || ["Progress"])[0];
+  const cats = lang === "pl" ? CAT_RULES_PL : CAT_RULES, tags = lang === "pl" ? TAG_RULES_PL : TAG_RULES;
+  const cat = (cats.find(([, r]) => r.test(hay)) || ["World"])[0];
+  const tag = (tags.find(([, r]) => r.test(hay)) || ["Progress"])[0];
   const moods = new Set();
   if (["Animals", "Conservation"].includes(cat)) moods.add("animals");
   if (["Science", "Space", "Technology", "Innovation", "Health & Medicine"].includes(cat)) moods.add("amazing").add("progress");
@@ -150,13 +195,14 @@ export const classifyHeuristic = item => {
 
 // [name, lon, lat, extra words that point to it]
 const PLACE_LIST = [
-  ["United States", -98, 39, "u\\.s\\.|usa|american|california|texas|new york|florida|washington state|oregon|colorado|alaska|hawaii|chicago|boston|michigan"], ["Canada", -100, 58, "canadian|ontario|quebec|british columbia|alberta|toronto|vancouver"], ["Mexico", -102, 23, "mexican"], ["Brazil", -52, -10, "brazilian|amazon rainforest|são paulo|sao paulo|rio de janeiro"], ["Argentina", -64, -34, "argentine|argentinian|patagonia"], ["Chile", -71, -33, "chilean"], ["Peru", -75, -10, "peruvian"], ["Colombia", -73, 4, "colombian"], ["Costa Rica", -84, 10, "costa rican"], ["Ecuador", -78, -1, "galápagos|galapagos|ecuadorian"],
-  ["United Kingdom", -2, 54, "uk\\b|britain|british|england|english|scotland|scottish|wales|welsh|london|northern ireland"], ["Ireland", -8, 53, "irish|dublin"], ["France", 2, 46, "french|paris"], ["Spain", -4, 40, "spanish|madrid|barcelona"], ["Portugal", -8, 39, "portuguese|lisbon"], ["Germany", 10, 51, "german|berlin"], ["Netherlands", 5, 52, "dutch|amsterdam"], ["Belgium", 4, 50, "belgian|brussels"], ["Italy", 12, 42, "italian|rome|milan|sicily"], ["Switzerland", 8, 47, "swiss"], ["Austria", 14, 47, "austrian|vienna"], ["Poland", 19, 52, "polish|warsaw"], ["Denmark", 10, 56, "danish|copenhagen"], ["Norway", 9, 61, "norwegian|oslo"], ["Sweden", 15, 62, "swedish|stockholm"], ["Finland", 26, 64, "finnish|helsinki"], ["Iceland", -19, 65, "icelandic"], ["Greece", 22, 39, "greek|athens"], ["Ukraine", 31, 49, "ukrainian|kyiv"], ["Romania", 25, 46, "romanian"], ["Czech Republic", 15, 50, "czech|prague"],
-  ["Kenya", 38, 0, "kenyan|nairobi"], ["Nigeria", 8, 9, "nigerian|lagos"], ["South Africa", 24, -29, "south african|cape town|johannesburg"], ["Ethiopia", 39, 9, "ethiopian"], ["Egypt", 30, 27, "egyptian|cairo"], ["Ghana", -1, 8, "ghanaian"], ["Rwanda", 30, -2, "rwandan"], ["Uganda", 32, 1, "ugandan"], ["Tanzania", 35, -6, "tanzanian"], ["Morocco", -7, 32, "moroccan"], ["Madagascar", 47, -19, "malagasy"], ["Senegal", -14, 14, "senegalese"], ["Zimbabwe", 30, -19, "zimbabwean"], ["Mozambique", 35, -18, "mozambican"], ["Namibia", 17, -22, "namibian"], ["Botswana", 24, -22, "botswanan"],
-  ["India", 79, 22, "indian|delhi|mumbai|bengaluru|kerala"], ["China", 104, 35, "chinese|beijing|shanghai"], ["Japan", 138, 37, "japanese|tokyo"], ["South Korea", 128, 36, "korean|seoul"], ["Indonesia", 117, -2, "indonesian|bali|jakarta"], ["Philippines", 122, 12, "filipino|filipina|manila"], ["Vietnam", 106, 16, "vietnamese"], ["Thailand", 101, 15, "thai\\b|bangkok"], ["Malaysia", 102, 4, "malaysian|borneo"], ["Singapore", 104, 1, "singapore"], ["Bangladesh", 90, 24, "bangladeshi|dhaka"], ["Pakistan", 70, 30, "pakistani"], ["Nepal", 84, 28, "nepali|nepalese|himalaya"], ["Sri Lanka", 81, 8, "sri lankan"], ["Kazakhstan", 67, 48, "kazakh"], ["Mongolia", 104, 47, "mongolian"], ["Saudi Arabia", 45, 24, "saudi"], ["Israel", 35, 31, "israeli"], ["Turkey", 35, 39, "turkish|istanbul"], ["United Arab Emirates", 54, 24, "uae|dubai|abu dhabi"],
-  ["Australia", 134, -25, "australian|sydney|melbourne|queensland|tasmania|great barrier reef"], ["New Zealand", 174, -41, "new zealander|kiwi|auckland|aotearoa|māori|maori"],
+  ["United States", -98, 39, "u\\.s\\.|usa|american|california|texas|new york|florida|washington state|oregon|colorado|alaska|hawaii|chicago|boston|michigan|usa|stan[óa]?w? zjednoczon|stany zjednoczone|amerykań|amerykan"], ["Canada", -100, 58, "canadian|ontario|quebec|british columbia|alberta|toronto|vancouver|kanad"], ["Mexico", -102, 23, "mexican|meksyk"], ["Brazil", -52, -10, "brazilian|amazon rainforest|são paulo|sao paulo|rio de janeiro|brazyli"], ["Argentina", -64, -34, "argentine|argentinian|patagonia|argentyn"], ["Chile", -71, -33, "chilean"], ["Peru", -75, -10, "peruvian"], ["Colombia", -73, 4, "colombian"], ["Costa Rica", -84, 10, "costa rican"], ["Ecuador", -78, -1, "galápagos|galapagos|ecuadorian"],
+  ["United Kingdom", -2, 54, "uk\\b|britain|british|england|english|scotland|scottish|wales|welsh|london|northern ireland|wielk[aiej]+ brytani|brytyj|angli|londyn|szkocj"], ["Ireland", -8, 53, "irish|dublin|irlandi"], ["France", 2, 46, "french|paris|francj|francusk|paryż"], ["Spain", -4, 40, "spanish|madrid|barcelona|hiszpani|hiszpańsk"], ["Portugal", -8, 39, "portuguese|lisbon|portugali"], ["Germany", 10, 51, "german|berlin|niemc|niemieck|berlin"], ["Netherlands", 5, 52, "dutch|amsterdam|holandi|holendersk|niderland"], ["Belgium", 4, 50, "belgian|brussels|belgi"], ["Italy", 12, 42, "italian|rome|milan|sicily|włoch|włosk|rzym"], ["Switzerland", 8, 47, "swiss|szwajcari"], ["Austria", 14, 47, "austrian|vienna|austri"], ["Poland", 19, 52, "polish|warsaw|polsk|polac|w polsce|warszaw|krak[oó]w|gdańsk|gdansk|wrocław|wroclaw|poznań|poznan|łódź|lodz|lublin|katowic|szczecin|bydgoszcz|białystok|białymstok|rzesz[oó]w|toruń|torun|olsztyn|opol|kielc|gdyni|sopot|zakopan|tatr|bieszczad|mazur|podlas|wisł|białowie|pomorz|śląs|małopols|wielkopols|mazowsz"], ["Denmark", 10, 56, "danish|copenhagen|dani[ia]|duńsk"], ["Norway", 9, 61, "norwegian|oslo|norwegi|norwesk"], ["Sweden", 15, 62, "swedish|stockholm|szwecj|szwedzk"], ["Finland", 26, 64, "finnish|helsinki|finlandi|fińsk"], ["Iceland", -19, 65, "icelandic|islandi"], ["Greece", 22, 39, "greek|athens|grecj|greck"], ["Ukraine", 31, 49, "ukrainian|kyiv|ukrain"], ["Romania", 25, 46, "romanian|rumuni"], ["Czech Republic", 15, 50, "czech|prague|czech|czesk"],
+  ["Kenya", 38, 0, "kenyan|nairobi|keni"], ["Nigeria", 8, 9, "nigerian|lagos|nigeri"], ["South Africa", 24, -29, "south african|cape town|johannesburg|rpa|republik[ai] południowej afryki"], ["Ethiopia", 39, 9, "ethiopian|etiopi"], ["Egypt", 30, 27, "egyptian|cairo|egip"], ["Ghana", -1, 8, "ghanaian"], ["Rwanda", 30, -2, "rwandan"], ["Uganda", 32, 1, "ugandan"], ["Tanzania", 35, -6, "tanzanian"], ["Morocco", -7, 32, "moroccan"], ["Madagascar", 47, -19, "malagasy"], ["Senegal", -14, 14, "senegalese"], ["Zimbabwe", 30, -19, "zimbabwean"], ["Mozambique", 35, -18, "mozambican"], ["Namibia", 17, -22, "namibian"], ["Botswana", 24, -22, "botswanan"],
+  ["India", 79, 22, "indian|delhi|mumbai|bengaluru|kerala|w indiach|indyjsk"], ["China", 104, 35, "chinese|beijing|shanghai|chin[ayi]|chińsk"], ["Japan", 138, 37, "japanese|tokyo|japoni|japońsk"], ["South Korea", 128, 36, "korean|seoul|kore[ai] południow"], ["Indonesia", 117, -2, "indonesian|bali|jakarta|indonezj"], ["Philippines", 122, 12, "filipino|filipina|manila|filipin"], ["Vietnam", 106, 16, "vietnamese|wietnam"], ["Thailand", 101, 15, "thai\\b|bangkok|tajlandi"], ["Malaysia", 102, 4, "malaysian|borneo"], ["Singapore", 104, 1, "singapore"], ["Bangladesh", 90, 24, "bangladeshi|dhaka"], ["Pakistan", 70, 30, "pakistani"], ["Nepal", 84, 28, "nepali|nepalese|himalaya"], ["Sri Lanka", 81, 8, "sri lankan"], ["Kazakhstan", 67, 48, "kazakh|kazachstan"], ["Mongolia", 104, 47, "mongolian"], ["Saudi Arabia", 45, 24, "saudi"], ["Israel", 35, 31, "israeli"], ["Turkey", 35, 39, "turkish|istanbul|turcj|turecki"], ["United Arab Emirates", 54, 24, "uae|dubai|abu dhabi"],
+  ["Australia", 134, -25, "australian|sydney|melbourne|queensland|tasmania|great barrier reef|australi"], ["New Zealand", 174, -41, "new zealander|kiwi|auckland|aotearoa|māori|maori|now[aejy]+ zelandi"],
 ];
-const PLACE_RE = PLACE_LIST.map(([n, lon, lat, extra]) => [n, [lon, lat], new RegExp(`\\b(${n.replace(/ /g, "\\s")}${extra ? "|" + extra : ""})`, "i")]);
+// English and Polish names. Matched at the start of a word (works with letters like ł or ż too).
+const PLACE_RE = PLACE_LIST.map(([n, lon, lat, extra]) => [n, [lon, lat], new RegExp(`(?<!\\p{L})(${n.replace(/ /g, "\\s")}${extra ? "|" + extra : ""})`, "iu")]);
 export const GEO = Object.fromEntries(PLACE_LIST.map(([n, lon, lat]) => [n, [lon, lat]]));
 export function detectCountry(item) {
   const t = `${item.title} ${item.description}`;

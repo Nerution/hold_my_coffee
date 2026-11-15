@@ -45,3 +45,11 @@ test("a captcha page pauses Google translation instead of storing junk", async (
   assert.equal(map.size, 0);
   assert.equal(googleAvailable(), false);
 });
+
+test("asks Google to translate from the story's own language", async () => {
+  const urls = [];
+  const spy = async url => { urls.push(url); return new Response(JSON.stringify([[["Beavers are back", "Bobry wróciły"]], null, "pl"]), { status: 200 }); };
+  const { googleTranslateText } = await import("../translate.mjs");
+  assert.equal(await googleTranslateText("Bobry wróciły", "en", spy, "pl"), "Beavers are back");
+  assert.match(urls[0], /sl=pl&tl=en/);
+});

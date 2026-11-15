@@ -18,7 +18,7 @@ async function check(feed) {
     if (!items.length) throw new Error("no items (not a feed, or blocked)");
     const recent = items.filter(it => it.date && Date.now() - Date.parse(it.date) < DAYS * 864e5);
     const newest = items.map(it => it.date).filter(Boolean).sort().pop();
-    const kept = recent.filter(it => screen(feed.kind === "search" ? { ...it, title: stripOutlet(it.title, it.outlet), description: "" } : it, feed.kind).keep);
+    const kept = recent.filter(it => screen(feed.kind === "search" ? { ...it, title: stripOutlet(it.title, it.outlet), description: "" } : it, feed.kind, feed.lang).keep);
     rows.push({ feed, ok: true, items: items.length, recent: recent.length, kept: kept.length, newest, ms: Date.now() - started, example: kept[0]?.title });
   } catch (err) {
     rows.push({ feed, ok: false, error: err.name === "TimeoutError" ? "timed out" : [err.message, err.cause?.code].filter(Boolean).join(": ") });

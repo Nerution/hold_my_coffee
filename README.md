@@ -32,9 +32,10 @@ Only stories the model hasn't seen before are sent, so a refresh with no new sto
 
 ### Translation
 
-Live stories arrive in English. When a reader picks Polish, German or Spanish:
+Live stories arrive in English or Polish. Each story is shown as published to readers of its own language, and translated for everyone else (English, Polish, German or Spanish):
 
 - **What happens:** the server translates the headline, the card summary and the article text in the background, and the home screen shows progress.
+- **Which stories a reader sees:** Personalisation → "Stories originally in" (English / Polski). By default Polish readers get both, and everyone else gets English-language stories. Anyone can add Polish stories, which are then translated for them.
 - **Once per story:** each story is translated once per language and kept in the cache.
 - **Ahead of time:** new stories are translated in advance for languages people have used.
 
@@ -96,7 +97,7 @@ The app needs the news server hosted over HTTPS; `render.yaml` sets it up on Ren
 
 ## Where the news comes from
 
-The sources are listed in `server/feeds.mjs`: 45 outlet feeds and 20 Google News searches. There are three kinds:
+The sources are listed in `server/feeds.mjs`: 57 outlet feeds (12 of them Polish) and 30 Google News searches (10 of them Polish). There are three kinds:
 
 - **Positive outlets** such as Positive News, Good News Network, Reasons to be Cheerful, The Optimist Daily, YES! Magazine, The Better India, Shareable, Anthropocene Magazine and the Guardian's "The Upside". Their stories are kept unless they read as clearly negative.
 - **General, science and specialist outlets.** Only stories with a clear positive development and no negative signal pass. With AI review on, the model makes the final call. They include:
@@ -104,7 +105,14 @@ The sources are listed in `server/feeds.mjs`: 45 outlet feeds and 20 Google News
   - science, health and space: ScienceDaily, Phys.org, Medical Xpress, Science News, Quanta, New Atlas, MIT News, The Conversation, NIH, NASA, ESA and others;
   - education and culture: The Hechinger Report, Hyperallergic, Colossal;
   - world and regional news in English: UN News, Al Jazeera, DW, ABC Australia, CBC, RNZ, Notes from Poland, BBC and NPR.
-- **Google News searches.** Ten topic searches (wildlife recovery, medical progress, clean energy records, restoration, community help and more) and one broad good-news search in each of ten country editions (UK, India, Australia, Canada, Ireland, Kenya, Nigeria, South Africa, the Philippines, Singapore).
+- **Polish outlets, in Polish:**
+  - science: Nauka w Polsce (PAP), Crazy Nauka;
+  - environment and energy: SmogLab, Gramwzielone.pl, WysokieNapiecie.pl;
+  - technology and business: Spider's Web, Bankier.pl;
+  - general news: OKO.press, RMF24, TVN24, Polsat News, Gazeta.pl.
+
+  They are filtered with Polish rules, written as word beginnings so that endings like *uratowali / uratowała* still match. There are also Polish clickbait patterns (*nie uwierzysz…*, *szok*) and Polish place names for the map (*w Polsce*, *Warszawa*, *Tatry*, *Niemcy*…).
+- **Google News searches.** Ten topic searches (wildlife recovery, medical progress, clean energy records, restoration, community help and more) and one broad good-news search in each of ten country editions (UK, India, Australia, Canada, Ireland, Kenya, Nigeria, South Africa, the Philippines, Singapore). Ten more searches run in the Polish edition, in Polish. They cover good news (*dobre wiadomości*), species returning, nature protection, medicine, Polish scientists, renewable energy records, falling unemployment or accidents, volunteers, rescues, and pupils' successes.
   - These reach thousands of outlets, including small local papers, and each story is credited to the outlet that published it.
   - Search results give only a headline, so only headlines with a positive signal and no negative one are kept. The article page says so and links to the full story.
 
@@ -125,7 +133,7 @@ It prints each feed and search with:
 - how many pass the positive filter;
 - when its newest item was published.
 
-Remove failed feeds from `feeds.mjs`, or fix their addresses. To add an outlet, find its RSS or Atom feed (often at `/feed/` or `/rss`) and add one line. Set `GOOD_THINGS_SEARCH=off` to turn the Google News searches off.
+Remove failed feeds from `feeds.mjs`, or fix their addresses. To add an outlet, find its RSS or Atom feed (often at `/feed/` or `/rss`) and add one line: `feed(...)` for English and `pl(...)` for Polish. Set `GOOD_THINGS_SEARCH=off` to turn the Google News searches off.
 
 Every story links to the original article. When several outlets report the same event, the earliest report leads and the others appear under "Also reported by".
 

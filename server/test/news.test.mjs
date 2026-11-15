@@ -116,3 +116,14 @@ test("Google News results: original outlet, clean headline, tabloids and press r
   assert.equal(s.url, "https://news.google.com/rss/articles/CBMiTESTONE?oc=5");
   assert.equal(out.sources[0].source, "Test search");
 });
+
+test("Polish feeds: Polish rules, Polish place names, story language", async () => {
+  const out = await collect({ feeds: [{ source: "Testowy serwis", url: fx("polish.xml"), kind: "general", lang: "pl" }], now: NOW, log: quiet, ai: false });
+  const titles = out.stories.map(s => s.title);
+  assert.deepEqual(titles.sort(), ["Test: bobry wróciły nad testową rzekę na Mazowszu, populacja rośnie", "Test: polscy naukowcy opracowali przełomową terapię testową"]);
+  assert.ok(out.stories.every(s => s.lang === "pl"));
+  const beavers = out.stories.find(s => /bobry/.test(s.title));
+  assert.equal(beavers.country, "Poland");
+  assert.equal(beavers.cat, "Conservation", "mentions species protection (ochrona gatunku)");
+  assert.equal(out.stories.find(s => /terapi/.test(s.title)).cat, "Health & Medicine");
+});

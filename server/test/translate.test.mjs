@@ -49,3 +49,15 @@ test("prune drops translations of stories that are gone", async () => {
   tr.prune(new Set(["b"]));
   assert.deepEqual(Object.keys(tr.store.es), ["b"]);
 });
+
+test("translates in both directions and skips stories already in the reader's language", async () => {
+  const calls = [];
+  const mixed = [{ id: "en1", lang: "en", title: "Otters return", sum: "" }, { id: "pl1", lang: "pl", title: "Bobry wróciły", sum: "" }];
+  const tr = createTranslator({ translate: fake(calls), enabled: () => true, log: quiet });
+  await tr.ensure(mixed, "en");
+  await tr.ensure(mixed, "pl");
+  await tr.ensure(mixed, "de");
+  assert.deepEqual(calls, [["en", ["pl1"]], ["pl", ["en1"]], ["de", ["en1", "pl1"]]]);
+  assert.deepEqual(tr.progress(mixed, "pl"), { done: 1, total: 1 });
+  assert.equal(tr.attach(mixed, "en")[1].tr.en.title, "[en] Bobry wróciły");
+});
