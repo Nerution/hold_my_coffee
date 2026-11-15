@@ -135,6 +135,16 @@ input[type=text],input[type=search],input[type=time]{font:inherit;color:var(--in
 .pips{display:flex;gap:5px}
 .pips i{flex:1;height:5px;border-radius:3px;background:rgba(53,81,63,.2)}
 .pips i.on{background:var(--sage-ink)}
+/* Bruno, the grumpy badger */
+.bruno{display:flex;gap:10px;align-items:flex-end;width:100%;text-align:left}
+.bruno .face{width:58px;height:58px;flex:none;border-radius:50%;transition:transform .25s}
+.bruno.small .face{width:42px;height:42px}
+.bruno .bubble{position:relative;flex:1;background:var(--surface);border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:10px 13px;font-size:14.5px;line-height:1.4;box-shadow:var(--shadow)}
+.bruno .bubble b{font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--sage-ink);display:block;margin-bottom:2px}
+.bruno .hint{display:block;font-size:11.5px;color:var(--muted);margin-top:4px}
+.bruno.small .bubble{display:none}
+.bruno:active .face{transform:rotate(-6deg) scale(.96)}
+@media (prefers-reduced-motion:reduce){.bruno .face{transition:none}.bruno:active .face{transform:none}}
 .stop{text-align:center;padding:26px 20px;border-radius:20px;border:1.5px dashed var(--line);display:flex;flex-direction:column;gap:12px;align-items:center}
 .stop h3{font-size:22px}
 .leaf{width:44px;height:44px;border-radius:50%;background:var(--sage);color:var(--sage-ink);display:grid;place-items:center}
@@ -528,13 +538,13 @@ async function browserTranslate(){
 }
 /* ---------- saved on the device ---------- */
 function stateJSON(){return JSON.stringify({v:1,prefs:{cats:[...S.prefs.cats],sources:S.prefs.sources,regions:[...S.prefs.regions],amount:S.prefs.amount,srcLangs:S.prefs.srcLangs||null},
-  cols:S.cols,read:S.read.slice(-500),like:S.like,hidden:[...S.hidden],muted:[...S.muted],notif:S.notif,lang:LANG,dark:S.dark,onboarded:S.onboarded,name:S.name||"",lock:!!S.lock})}
+  cols:S.cols,read:S.read.slice(-500),like:S.like,hidden:[...S.hidden],muted:[...S.muted],notif:S.notif,lang:LANG,dark:S.dark,onboarded:S.onboarded,name:S.name||"",lock:!!S.lock,bruno:S.bruno!==false})}
 let lastSaved="";
 function persistSoon(){clearTimeout(persistSoon.t);persistSoon.t=setTimeout(()=>{const j=stateJSON();if(j!==lastSaved){lastSaved=j;store.set("gt-state",j)}},300)}
 async function loadState(){
   try{const j=await store.get("gt-state");if(j){const d=JSON.parse(j);lastSaved=j;
     Object.assign(S.prefs,{cats:new Set(d.prefs.cats),sources:d.prefs.sources,regions:new Set(d.prefs.regions),amount:d.prefs.amount,srcLangs:d.prefs.srcLangs||null});
-    Object.assign(S,{cols:d.cols,read:d.read,like:d.like||{},hidden:new Set(d.hidden),muted:new Set(d.muted),notif:Object.assign(S.notif,d.notif),dark:d.dark,onboarded:!!d.onboarded,name:d.name||"",lock:!!d.lock});
+    Object.assign(S,{cols:d.cols,read:d.read,like:d.like||{},hidden:new Set(d.hidden),muted:new Set(d.muted),notif:Object.assign(S.notif,d.notif),dark:d.dark,onboarded:!!d.onboarded,name:d.name||"",lock:!!d.lock,bruno:d.bruno!==false});
     if(d.lang&&I18N.langs[d.lang]){LANG=d.lang;document.documentElement.lang=LANG}
     if(typeof d.dark==="boolean")document.documentElement.classList.toggle("dark",d.dark)}}catch(e){}
   try{const j=await store.get("gt-saved");if(j)Object.entries(JSON.parse(j)).forEach(([id,x])=>SAVED.set(id,normalize(x)))}catch(e){}
@@ -564,6 +574,53 @@ async function wipeData(){
   for(const k of ["gt-state","gt-saved","gt-stories"])await store.remove(k);
   if(NATIVE){await GTNative.notifications.cancelDigest();for(const id of SAVED.keys())await GTNative.removeImage(id);await GTNative.widget({})}
   location.reload();
+}
+
+/* ---------- Bruno, the grumpy badger: finds good news suspicious, then comes round ---------- */
+function brunoFace(happy){
+  return `<svg class="face" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="32" fill="var(--sage)"/>
+  <path d="M9 64c2-12 10-17 23-17s21 5 23 17z" fill="#8C8F8A"/>
+  <circle cx="16.5" cy="16" r="5.5" fill="#5F635E"/><circle cx="47.5" cy="16" r="5.5" fill="#5F635E"/>
+  <ellipse cx="32" cy="29" rx="18.5" ry="16.5" fill="#A4A7A0"/>
+  <path d="M19 17c3-3 7-3 9-1l1 23c-4 3-9 2-12-2z" fill="#2B2F2C"/><path d="M45 17c-3-3-7-3-9-1l-1 23c4 3 9 2 12-2z" fill="#2B2F2C"/>
+  <path d="M28 13.5c2-1.2 6-1.2 8 0l1.2 25c-3.2 3.4-7.2 3.4-10.4 0z" fill="#F3EFE6"/>
+  <ellipse cx="32" cy="39.5" rx="5.6" ry="3.8" fill="#F3EFE6"/><ellipse cx="32" cy="37.8" rx="2.7" ry="1.9" fill="#1D2B23"/>
+  <ellipse cx="23.8" cy="28.8" rx="2.6" ry="2.1" fill="#fff"/><circle cx="23.8" cy="${happy?28.9:29.5}" r="1.15" fill="#1D2B23"/>
+  <ellipse cx="40.2" cy="28.8" rx="2.6" ry="2.1" fill="#fff"/><circle cx="40.2" cy="${happy?28.9:29.5}" r="1.15" fill="#1D2B23"/>
+  ${happy?"":`<path d="M21 26.6h5.6v1.9H21zM37.4 26.6H43v1.9h-5.6z" fill="#2B2F2C"/>`}
+  <path d="${happy?"M20.6 24.6l6 .4M43.4 24.6l-6 .4":"M20.4 23.8l6.6 2.4M43.6 23.8L37 26.2"}" stroke="#C9CCC6" stroke-width="1.5" stroke-linecap="round"/>
+  <circle cx="23.8" cy="28.8" r="4.3" fill="none" stroke="#E2AE3A" stroke-width="1.1"/><circle cx="40.2" cy="28.8" r="4.3" fill="none" stroke="#E2AE3A" stroke-width="1.1"/><path d="M28.1 28.6h7.8" stroke="#E2AE3A" stroke-width="1.1"/>
+  <path d="${happy?"M29 44.2q3 2.2 6 0":"M29 45.4q3-2.2 6 0"}" stroke="#1D2B23" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+  <path d="M15 50.5c10 5 24 5 34 0l1.8 5.6c-12.2 5-25.4 5-37.6 0z" fill="#1F3D2F"/><path d="M42 53l2.6 10 4.2-.8-1.8-10z" fill="#2F5A45"/></svg>`;
+}
+const BRUNO_OPEN=["Hmph.","Oh, wonderful. More good news.","I was having a perfectly gloomy day.","Let me guess. Something went right again?","Don't get your hopes up. I never do.","Good news? In this weather?"];
+const BRUNO_TAG={
+  "Breakthrough":"A breakthrough. I'll pretend I'm not impressed. …I'm a bit impressed.",
+  "Scientific Discovery":"Scientists found something new. Fine. That's genuinely interesting. Don't tell anyone I said so.",
+  "Conservation Success":"The animals are doing better. Good for them. Someone should be.",
+  "Recovery":"Things growing back. I suppose nature doesn't read the gloomy headlines either.",
+  "Human Kindness":"People being kind to strangers. Suspicious. …Lovely, actually.",
+  "Community Win":"Neighbours working together. Next they'll invite me. I won't go. Probably.",
+  "Milestone":"A record. I'd grumble, but it's quite a big one.",
+  "Good Trend":"The numbers are going the right way. I checked twice. Annoyingly, they still are.",
+  "Progress":"Progress. Slow, but progress. Like me getting out of bed.",
+};
+const BRUNO_SERIOUS="I don't do cheerful. But this one matters, and it's good. Even I'll say so.";
+const BRUNO_ANIMALS="As a badger, I approve of this. Reluctantly.";
+const BRUNO_EVENT={intro:"I'm Bruno. I'll be reading along. I don't expect to enjoy it.",dose:"You read all of them. Now you'll be insufferably cheerful all day, won't you.",
+  caught:"That's enough for today. Go outside. I'll stay here and be gloomy for both of us.",good:"The button for something good? Bold. Let's see."};
+const hash=x=>{let h=0;for(const c of String(x))h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)};
+/* what Bruno says about a story: a gloomy opener, then the line where he comes round */
+function brunoLines(s,good){
+  const open=good?BRUNO_EVENT.good:BRUNO_OPEN[hash(s.id)%BRUNO_OPEN.length];
+  const turn=s.serious?BRUNO_SERIOUS:(s.cat==="Animals"&&hash(s.id)%2)?BRUNO_ANIMALS:(BRUNO_TAG[s.tag]||BRUNO_TAG.Progress);
+  return [t(open),t(turn)];
+}
+const BR={};  // per-story step: 0 gloomy, 1 came round, 2 tucked away
+function bruno(key,lines){
+  if(S.bruno===false)return "";
+  const step=BR[key]||0,txt=step===2?"":lines[Math.min(step,lines.length-1)],happy=lines.length===1||step>=1;
+  return `<button class="bruno ${step===2?"small":""}" data-a="bruno" data-k="${esc(key)}" data-n="${lines.length}" aria-label="${step===2?t("Show Bruno"):t("Bruno says: {0}",esc(txt))}">${brunoFace(happy)}<span class="bubble"><b>Bruno</b>${esc(txt)}${step===0&&lines.length>1?`<span class="hint">${t("Tap to hear the rest")}</span>`:""}</span></button>`;
 }
 
 const ago=iso=>{const m=Math.max(0,Math.round((Date.now()-Date.parse(iso))/6e4));return m<1?t("just now"):m<60?t("{0} min ago",m):m<1440?t("{0} h ago",Math.round(m/60)):t("{0} d ago",Math.round(m/1440))};
@@ -711,7 +768,7 @@ V.obr=()=>`<div class="full">${steps(4)}<h1>${t("Where should good news come fro
 const amounts=()=>[[5,"Quick dose","5 stories a day"],[10,"Balanced","10 stories a day"],["explorer","Explorer","More stories whenever I want"]].map(([v,a,d])=>`<button class="opt" data-a="amount" data-v="${v}" aria-pressed="${String(S.prefs.amount)===String(v)}"><span class="radio"></span><span><b>${t(a)}</b><span class="muted">${t(d)}</span></span></button>`).join("");
 V.ob4=()=>`<div class="full">${steps(5)}<h1>${t("How much news do you want?")}</h1><p class="lead">${t("You can finish your day's stories. Nothing here scrolls forever.")}</p>${amounts()}<div class="spacer"></div><button class="btn" data-a="go" data-to="ob5">${t("Continue")}</button></div>`;
 V.ob5=()=>{S.onboarded=true;return V.ob5x()};
-V.ob5x=()=>`<div class="full"><div class="spacer"></div><div style="text-align:center">${MARK}</div><h1 style="text-align:center">${t("Your positive corner of the internet is ready.")}</h1><p class="lead" style="text-align:center">${t("Topics: {0} · Sources: {1} · Regions: {2} · Stories today: {3}",S.prefs.cats.size,S.prefs.sources.length,S.prefs.regions.size||t("Everywhere"),doseSize())}</p><div class="spacer"></div><button class="btn" data-a="tab" data-to="home">${t("Start discovering")}</button></div>`;
+V.ob5x=()=>`<div class="full"><div class="spacer"></div><div style="text-align:center">${MARK}</div><h1 style="text-align:center">${t("Your positive corner of the internet is ready.")}</h1><p class="lead" style="text-align:center">${t("Topics: {0} · Sources: {1} · Regions: {2} · Stories today: {3}",S.prefs.cats.size,S.prefs.sources.length,S.prefs.regions.size||t("Everywhere"),doseSize())}</p>${bruno("intro",[t(BRUNO_EVENT.intro)])}<div class="spacer"></div><button class="btn" data-a="tab" data-to="home">${t("Start discovering")}</button></div>`;
 
 V.home=()=>{
   const {list,outside}=ranked(),n=doseSize(),dose=list.slice(0,n),done=dose.filter(s=>S.read.includes(s.id)).length;
@@ -728,6 +785,7 @@ V.home=()=>{
   ${mood?`<div class="banner"><span>${t("Showing “{0}” for now. Your preferences are unchanged.",t(mood[1]))}</span><button data-a="mood" data-m="">${t("Clear")}</button></div>`:""}
   ${feed.map(s=>card(s,mood?"":s.id===outside?t("Outside your usual topics"):S.prefs.regions.has(s.country)?t("From your regions"):"")).join("")||empty(t("Nothing matches right now."))}
   ${mood?"":`<div class="stop"><span class="leaf">${ic("leaf")}</span><h3>${done>=dose.length?t("You're caught up with today's good news."):t("That's today's selection.")}</h3><p class="muted">${t("That's enough scrolling for now. There will be more good things tomorrow.")}</p>
+   ${done>=dose.length?bruno("caught",[t(BRUNO_EVENT.caught)]):""}
    <button class="btn" data-a="go" data-to="rest">${t("I'm done for now")}</button>${more?`<button class="btn ghost" data-a="more">${t("Show me one more")}</button>`:`<p class="small muted">${isLive()?t("You've seen every story for now. Refresh later for more."):t("You've seen every story in this prototype.")}</p>`}</div>`}
   </div>`;
 };
@@ -735,11 +793,12 @@ V.rest=()=>`<div class="full" style="text-align:center;align-items:center"><div 
 
 V.dose=()=>{
   const dose=doseList(),i=S.p.i||0;
-  if(i>=dose.length)return `<div class="full" style="text-align:center;align-items:center"><div class="spacer"></div><span class="leaf" style="width:64px;height:64px">${ic("check")}</span><h1>${t("{0}/{1} positive stories explored today",dose.length,dose.length)}</h1><p class="lead">${t("You're caught up. There will be more good things tomorrow.")}</p><div class="spacer"></div><button class="btn" data-a="go" data-to="rest">${t("I'm done for now")}</button><button class="btn ghost" data-a="tab" data-to="home">${t("Back to home")}</button></div>`;
+  if(i>=dose.length)return `<div class="full" style="text-align:center;align-items:center"><div class="spacer"></div><span class="leaf" style="width:64px;height:64px">${ic("check")}</span><h1>${t("{0}/{1} positive stories explored today",dose.length,dose.length)}</h1><p class="lead">${t("You're caught up. There will be more good things tomorrow.")}</p>${bruno("dose-done",[t(BRUNO_EVENT.dose)])}<div class="spacer"></div><button class="btn" data-a="go" data-to="rest">${t("I'm done for now")}</button><button class="btn ghost" data-a="tab" data-to="home">${t("Back to home")}</button></div>`;
   const s=dose[i];markRead(s.id);
   return `<div class="top"><button class="iconbtn" data-a="tab" data-to="home" aria-label="${t("Close")}">${ic("close")}</button><h2>${t("Daily dose")}</h2><span class="muted small" style="padding-right:8px">${t("{0} of {1}",i+1,dose.length)}</span></div>
   <div class="pad" style="padding-top:6px"><div class="pips">${dose.map((x,j)=>`<i style="background:${j<=i?"var(--forest)":"var(--line)"}"></i>`).join("")}</div>
-  <div class="card" style="cursor:default"><div class="art">${art(s.art)}<span class="tag">${t(s.tag)}</span></div><div class="cbody" style="padding-bottom:16px"><div class="cat">${esc(t(s.cat))} · ${t(s.country)}</div><h3>${esc(st(s,"title"))}</h3><p style="color:var(--ink)">${esc(st(s,"what"))}</p><p>${esc(st(s,"why"))}</p><div class="meta"><span>${esc(s.source)}</span><span>${fmt(s.date)}</span><span class="ai">${t("AI summary")}</span></div></div></div>
+  <div class="card" style="cursor:default"><div class="art">${art(s.art)}<span class="tag">${t(s.tag)}</span></div><div class="cbody" style="padding-bottom:16px"><div class="cat">${esc(t(s.cat))} · ${t(s.country)}</div><h3>${esc(st(s,"title"))}</h3><p style="color:var(--ink)">${esc(st(s,"what")||st(s,"sum"))}</p>${st(s,"why")||st(s,"excerpt")?`<p>${esc(st(s,"why")||(st(s,"excerpt")!==st(s,"sum")?st(s,"excerpt"):""))}</p>`:""}<div class="meta"><span>${esc(s.source)}</span><span>${fmt(s.date)}</span><span class="ai">${t("AI summary")}</span></div></div></div>
+  ${bruno("d"+s.id,brunoLines(s))}
   <button class="btn" data-a="doseNext">${i+1===dose.length?t("Finish"):t("Next story")}</button><button class="btn ghost" data-a="open" data-id="${s.id}">${t("Read the full summary")}</button></div>`;
 };
 
@@ -756,6 +815,7 @@ V.article=()=>{
     <div><h4>${t("What happened")}</h4><p>${esc(st(s,"what"))}</p></div><div><h4>${t("Why it matters")}</h4><p>${esc(st(s,"why"))}</p></div><div><h4>${t("The bigger picture")}</h4><p>${esc(st(s,"bigger"))}</p></div></div>`
     :!(st(s,"excerpt")||st(s,"sum"))?`<div class="pubbox"><p>${t("This story was found through a news search, which shares only the headline. Read the full story at {0}.",esc(s.source))}</p></div>`
     :`<div class="pubbox"><div class="eyebrow">${t("From the publisher")}</div><p>${esc(st(s,"excerpt")||st(s,"sum"))}</p><p class="small muted">${t("The publisher's own description, not an AI summary.")}${trNote(s)?" "+trNote(s):""}</p></div>`}
+   ${bruno("a"+s.id,brunoLines(s,S.p.good))}
    <a class="btn" href="${s.url}" target="_blank" rel="noopener">${t("Read original article")} ${ic("ext")}</a>
    <div><div class="eyebrow" style="margin-bottom:8px">${t("Also reported by")}</div><div class="also">${s.also.length?s.also.map(a=>`<a href="${a[1]}" target="_blank" rel="noopener">${esc(a[0])} ${ic("ext")}</a>`).join(""):`<span class="muted">${s.live?t("No other outlet in the app has reported this yet."):t("One source so far. Not yet independently confirmed.")}</span>`}</div></div>
    <div><div class="eyebrow" style="margin-bottom:8px">${t("Tune your feed")}</div><div class="tune">
@@ -876,6 +936,7 @@ V.history=()=>bar(t("Reading history"))+`<div class="pad" style="padding-top:8px
 V.personal=()=>bar(t("Personalisation"))+`<div class="pad" style="padding-top:8px"><div class="eyebrow">${t("Topics you want more of")}</div><div class="chips">${CATS.map(c=>`<button class="chip" data-a="cat" data-c="${esc(c)}" aria-pressed="${S.prefs.cats.has(c)}">${esc(t(c))}</button>`).join("")}</div>
  <p class="small muted">${t("Your topics appear more often. About one story in five comes from outside them, so the feed doesn't narrow.")}</p>
  <div class="eyebrow">${t("Regions you want more from")}</div>${regionPicker()}<p class="small muted">${S.prefs.regions.size?t("These countries get a lift in your feed. Everything else still appears."):t("Nothing chosen, so stories come from everywhere equally.")}</p>
+ <div class="rows"><div class="row">${brunoFace(true).replace('class="face"','class="face" style="width:34px;height:34px"')}<span class="grow"><b>${t("Bruno, the grumpy badger")}</b><div class="sub">${t("Comments on what you read. Gloomy at first, then he comes round.")}</div></span><button class="switch" role="switch" aria-checked="${S.bruno!==false}" aria-label="${t("Bruno, the grumpy badger")}" data-a="brunoToggle"></button></div></div>
  <div class="eyebrow">${t("Stories per day")}</div>${amounts()}
  <div class="eyebrow">${t("Stories originally in")}</div><div class="chips">${STORY_LANGS.map(l=>`<button class="chip" data-a="srcLang" data-l="${l}" aria-pressed="${shownLangs().has(l)}">${I18N.langs[l]}</button>`).join("")}</div>
  <p class="small muted">${t("Stories written in another language are translated for you when possible.")}</p>
@@ -959,6 +1020,8 @@ const A={
   wipeYes:()=>wipeData(),
   close:()=>{if(NATIVE)GTNative.minimize();A.tab({to:"home"})},
   toast:d=>toast(d.t),
+  bruno:d=>{const n=+d.n,st=BR[d.k]||0;BR[d.k]=n===1?(st?0:2):(st+1)%3;render(1)},
+  brunoToggle:()=>{S.bruno=S.bruno===false;render(1)},
   refresh:()=>loadLive(true),
   ask:d=>{const r=ask(d.q);S.chat=(S.chat||[]).concat({me:d.q},r);render(1);const sc=$("screen");sc.scrollTop=sc.scrollHeight},
   askClear:()=>{S.chat=[];render(1)},
