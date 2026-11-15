@@ -1,6 +1,8 @@
 /* Translations. Each UI row is [English key, Polish, German, Spanish]. Story rows are [title, card summary, what happened, why it matters, bigger picture, search keywords]. */
 (function(){
 const R=[
+["Show more sources ({0})","Pokaż więcej źródeł ({0})","Mehr Quellen anzeigen ({0})","Mostrar más fuentes ({0})"],
+["Show fewer","Pokaż mniej","Weniger anzeigen","Mostrar menos"],
 ["Still here. Still unconvinced.","Wciąż tu jestem. Wciąż nieprzekonany.","Immer noch da. Immer noch nicht überzeugt.","Sigo aquí. Sigo sin estar convencido."],
 ["Pick a story. I'll be here, doubting it.","Wybierz historię. Ja tu posiedzę i powątpiewam.","Such dir eine Geschichte aus. Ich sitze hier und zweifle.","Elige una historia. Yo me quedo aquí, dudando."],
 ["I've read the headlines. Suspiciously pleasant.","Przeczytałem nagłówki. Podejrzanie przyjemne.","Ich habe die Schlagzeilen gelesen. Verdächtig erfreulich.","He leído los titulares. Sospechosamente agradables."],

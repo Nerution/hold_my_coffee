@@ -153,6 +153,8 @@ input[type=text],input[type=search],input[type=time]{font:inherit;color:var(--in
 @keyframes bubble-in{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){#bruno .bubble{animation:none}#bruno .avatar-btn{transition:none}}
 .phone.has-bruno #screen>.pad,.phone.has-bruno #screen>div>.pad:last-child{padding-bottom:96px}
+.morebtn{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;padding:8px 2px;color:var(--sage-ink);font-weight:600;font-size:14px}
+.morebtn .ic{width:17px;height:17px}
 .stop{text-align:center;padding:26px 20px;border-radius:20px;border:1.5px dashed var(--line);display:flex;flex-direction:column;gap:12px;align-items:center}
 .stop h3{font-size:22px}
 .leaf{width:44px;height:44px;border-radius:50%;background:var(--sage);color:var(--sage-ink);display:grid;place-items:center}
@@ -791,8 +793,17 @@ V.ob1=()=>`<div class="full"><div class="rhead">${steps(1)}${langBtn()}</div><di
 V.ob2=()=>`<div class="full">${steps(2)}<h1>${t("What gives you hope?")}</h1><p class="lead">${t("Pick a few topics. You'll still see the occasional story from outside them.")}</p>
  <div class="chips">${CATS.map(c=>`<button class="chip" data-a="cat" data-c="${esc(c)}" aria-pressed="${S.prefs.cats.has(c)}">${esc(t(c))}</button>`).join("")}</div>
  <div class="spacer"></div><button class="btn" data-a="go" data-to="ob3">${t("Continue")}</button></div>`;
+/* long source lists show 5 chips (chosen ones first, then the most active outlets), with a button for more */
+const MORE={};
+function limitedChips(key,list,chip,isOn){
+  const n={};STORIES.forEach(s=>n[s.source]=(n[s.source]||0)+1);
+  const on=x=>!!(isOn&&isOn(x)),ordered=list.slice().sort((a,b)=>(n[b]||0)-(n[a]||0)||a.localeCompare(b));  // most active first; order stays put when tapping
+  let room=5+(MORE[key]||0)-ordered.filter(on).length;                      // chosen ones always show and count towards the limit
+  const shown=ordered.filter(x=>on(x)||room-->0),left=ordered.length-shown.length;
+  return `<div class="chips">${shown.map(chip).join("")}</div>${left>0?`<button class="morebtn" data-a="moreSrc" data-k="${key}">${ic("plus")}${t("Show more sources ({0})",left)}</button>`:MORE[key]?`<button class="morebtn" data-a="lessSrc" data-k="${key}">${ic("minus")}${t("Show fewer")}</button>`:""}`;
+}
 V.ob3=()=>`<div class="full">${steps(3)}<h1>${t("Choose sources you trust")}</h1><p class="lead">${t("Optional. Their stories get a slight lift in your feed.")}</p>
- <div class="chips">${SOURCES.map(c=>`<button class="chip" data-a="follow" data-src="${esc(c)}" aria-pressed="${following(c)}">${esc(c)}</button>`).join("")}</div>
+ ${limitedChips("ob3",SOURCES,c=>`<button class="chip" data-a="follow" data-src="${esc(c)}" aria-pressed="${following(c)}">${esc(c)}</button>`,following)}
  <div class="spacer"></div><button class="btn" data-a="go" data-to="obr">${t("Continue")}</button><button class="btn ghost" data-a="go" data-to="obr">${t("Skip for now")}</button></div>`;
 V.obr=()=>`<div class="full">${steps(4)}<h1>${t("Where should good news come from?")}</h1><p class="lead">${t("Optional. Stories from the countries you pick appear more often. Worldwide stories always stay in.")}</p>${regionPicker()}<div class="spacer"></div><button class="btn" data-a="go" data-to="ob4">${S.prefs.regions.size?t("Continue"):t("Continue with everywhere")}</button></div>`;
 const amounts=()=>[[5,"Quick dose","5 stories a day"],[10,"Balanced","10 stories a day"],["explorer","Explorer","More stories whenever I want"]].map(([v,a,d])=>`<button class="opt" data-a="amount" data-v="${v}" aria-pressed="${String(S.prefs.amount)===String(v)}"><span class="radio"></span><span><b>${t(a)}</b><span class="muted">${t(d)}</span></span></button>`).join("");
@@ -925,7 +936,7 @@ V.saved=()=>{const open=S.p.col||0,c=S.cols[open];return `<div class="pad"><h1 s
 
 V.sources=()=>{const f=S.prefs.sources,rest=SOURCES.filter(s=>!f.includes(s)&&!S.hidden.has(s));return bar(t("My Sources"))+`<div class="pad" style="padding-top:8px"><p class="muted">${t("Stories from these publishers get a slight lift in your feed. Order them by how much you trust them.")}</p>
  <div class="rows">${f.map((s,i)=>`<div class="row"><span style="color:var(--sun)">${ic("star")}</span><span class="grow"><b>${esc(s)}</b><div class="sub">${(isLive()?t("Stories: {0}",STORIES.filter(x=>x.source===s).length):t("Sample stories: {0}",STORIES.filter(x=>x.source===s).length))}</div></span><button class="iconbtn" data-a="srcMove" data-i="${i}" data-d="-1" aria-label="${t("Move up")}" ${i?"":"disabled style=\"opacity:.3\""}>${ic("up")}</button><button class="iconbtn" data-a="srcMove" data-i="${i}" data-d="1" aria-label="${t("Move down")}" ${i<f.length-1?"":"disabled style=\"opacity:.3\""}>${ic("down")}</button><button class="iconbtn" data-a="follow" data-src="${esc(s)}" aria-label="${t("Remove")}">${ic("close")}</button></div>`).join("")||`<div class="row muted">${t("You haven't chosen any sources yet.")}</div>`}</div>
- <div class="eyebrow">${t("Add a source")}</div><div class="chips">${rest.map(s=>`<button class="chip" data-a="follow" data-src="${esc(s)}">+ ${esc(s)}</button>`).join("")}</div>
+ <div class="eyebrow">${t("Add a source")}</div>${limitedChips("add",rest,s=>`<button class="chip" data-a="follow" data-src="${esc(s)}">+ ${esc(s)}</button>`)}
  ${S.hidden.size?`<div class="eyebrow">${t("Hidden sources")}</div><div class="chips">${[...S.hidden].map(s=>`<button class="chip" data-a="unhide" data-src="${esc(s)}">${t("Show {0} again",esc(s))}</button>`).join("")}</div>`:""}</div>`};
 
 V.weekly=()=>{
@@ -1048,6 +1059,8 @@ const A={
   wipeYes:()=>wipeData(),
   close:()=>{if(NATIVE)GTNative.minimize();A.tab({to:"home"})},
   toast:d=>toast(d.t),
+  moreSrc:d=>{MORE[d.k]=(MORE[d.k]||0)+10;render(1)},
+  lessSrc:d=>{MORE[d.k]=0;render(1)},
   brunoTap:()=>{const ctx=brunoContext();if(!BRS.open){BRS.open=true}else if(ctx&&BRS.step<ctx.lines.length-1){BRS.step++}else{BRS.open=false}renderBruno()},
   brunoNext:()=>{const ctx=brunoContext();if(ctx&&BRS.step<ctx.lines.length-1)BRS.step++;else BRS.open=false;renderBruno()},
   brunoClose:()=>{BRS.open=false;renderBruno()},
