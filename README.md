@@ -167,9 +167,12 @@ What the server never does:
 - `S`: all app state (preferences, saved collections, reading history). It is kept in memory only and resets on reload.
 - `ranked()`: feed ordering. Chosen topics, followed sources and chosen regions lift a story. Newer stories and stories confirmed by several outlets weigh a little more. One story from outside the chosen topics is moved into the first few.
 - `V`: one function per screen, each returning an HTML string.
-- `brunoFace()`, `brunoLines()` and `bruno()`: Bruno, the grumpy badger. He appears under articles, on Daily Dose cards, when the reader is caught up, and once in onboarding. He opens gloomily, comes round when tapped, and hides on a second tap.
-  - His lines are fixed and translated in `i18n.js`. They are picked per story from its impact tag, with a gentler line for serious subjects.
-  - Personalisation turns him off.
+- `brunoFace()`, `brunoLines()`, `brunoContext()` and `renderBruno()`: Bruno, the grumpy badger, a small assistant in the corner of the screen.
+  - **Where he sits:** bottom right above the tab bar, or top right on screens without it, so he never covers their buttons.
+  - **When he speaks:** his speech bubble opens on its own the first time a reader opens an article or a Daily Dose story, finishes the dose, is caught up, or finishes onboarding.
+  - **Tapping:** he starts gloomy and comes round when tapped. A tap elsewhere or the × closes the bubble. On other screens, tapping him gives a short grumble.
+  - **His lines** are fixed and translated in `i18n.js`. They are picked per story from its impact tag, with a gentler line for serious subjects.
+  - **Turning him off:** in Personalisation.
 - `ask()` and `V.assistant`: the AI assistant preview. It only retrieves stories already loaded, and says so when nothing matches.
 - `A`: one function per action. Clicks are routed by the `data-a` attribute on the clicked element.
 - `t(key, ...args)`: interface text. The English string is the key; `st(story, field)` does the same for story text.

@@ -135,16 +135,24 @@ input[type=text],input[type=search],input[type=time]{font:inherit;color:var(--in
 .pips{display:flex;gap:5px}
 .pips i{flex:1;height:5px;border-radius:3px;background:rgba(53,81,63,.2)}
 .pips i.on{background:var(--sage-ink)}
-/* Bruno, the grumpy badger */
-.bruno{display:flex;gap:10px;align-items:flex-end;width:100%;text-align:left}
-.bruno .face{width:58px;height:58px;flex:none;border-radius:50%;transition:transform .25s}
-.bruno.small .face{width:42px;height:42px}
-.bruno .bubble{position:relative;flex:1;background:var(--surface);border:1px solid var(--line);border-radius:16px 16px 16px 4px;padding:10px 13px;font-size:14.5px;line-height:1.4;box-shadow:var(--shadow)}
-.bruno .bubble b{font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--sage-ink);display:block;margin-bottom:2px}
-.bruno .hint{display:block;font-size:11.5px;color:var(--muted);margin-top:4px}
-.bruno.small .bubble{display:none}
-.bruno:active .face{transform:rotate(-6deg) scale(.96)}
-@media (prefers-reduced-motion:reduce){.bruno .face{transition:none}.bruno:active .face{transform:none}}
+/* Bruno, the grumpy badger: a small assistant in the bottom-right corner */
+#bruno{position:absolute;right:12px;bottom:92px;z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none}
+#bruno[hidden]{display:none}
+#bruno.attop{flex-direction:column-reverse}
+#bruno.attop .bubble{border-radius:18px 4px 18px 18px}
+#bruno.attop .bubble:after{bottom:auto;top:-7px;transform:rotate(225deg)}
+#bruno .avatar-btn{pointer-events:auto;width:58px;height:58px;border-radius:50%;box-shadow:0 4px 14px rgba(0,0,0,.18);transition:transform .2s}
+#bruno .avatar-btn:active{transform:scale(.94) rotate(-5deg)}
+#bruno .face{width:58px;height:58px;display:block;border-radius:50%}
+#bruno .bubble{pointer-events:auto;position:relative;max-width:min(260px,calc(100vw - 40px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:18px 18px 4px 18px;padding:10px 34px 11px 14px;font-size:14.5px;line-height:1.42;box-shadow:0 8px 24px rgba(0,0,0,.14);text-align:left;animation:bubble-in .22s ease-out}
+#bruno .bubble b{display:block;font-weight:600;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--sage-ink);margin-bottom:2px}
+#bruno .bubble .hint{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
+#bruno .bubble .x{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:var(--muted)}
+#bruno .bubble .x .ic{width:15px;height:15px}
+#bruno .bubble:after{content:"";position:absolute;right:20px;bottom:-7px;width:12px;height:12px;background:var(--surface);border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg)}
+@keyframes bubble-in{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#bruno .bubble{animation:none}#bruno .avatar-btn{transition:none}}
+.phone.has-bruno #screen>.pad,.phone.has-bruno #screen>div>.pad:last-child{padding-bottom:96px}
 .stop{text-align:center;padding:26px 20px;border-radius:20px;border:1.5px dashed var(--line);display:flex;flex-direction:column;gap:12px;align-items:center}
 .stop h3{font-size:22px}
 .leaf{width:44px;height:44px;border-radius:50%;background:var(--sage);color:var(--sage-ink);display:grid;place-items:center}
@@ -269,6 +277,7 @@ nav .center .orb svg{width:26px;height:26px}
     <nav id="nav" hidden></nav>
     <div id="sheet"></div>
     <div id="toast" role="status"></div>
+    <div id="bruno" hidden></div>
     <div id="lock" role="dialog" aria-modal="true"></div>
   </div>
 </div>
@@ -569,7 +578,7 @@ async function applyNotif(ask){
 const BIO={available:false,type:"fingerprint"};
 let locked=false,pausedAt=0;
 function showLock(){locked=true;const l=$("lock");l.innerHTML=`${MARK}<h2>${t("Good Things is locked")}</h2><p class="muted">${t("Unlock with {0} to continue.",t(BIO.type))}</p><button class="btn" data-a="unlock">${t("Unlock")}</button>`;l.classList.add("on")}
-async function unlock(){if(await GTNative.biometric.authenticate(t("Unlock Good Things"))){locked=false;$("lock").classList.remove("on")}}
+async function unlock(){if(await GTNative.biometric.authenticate(t("Unlock Good Things"))){locked=false;$("lock").classList.remove("on");renderBruno()}}
 async function wipeData(){
   for(const k of ["gt-state","gt-saved","gt-stories"])await store.remove(k);
   if(NATIVE){await GTNative.notifications.cancelDigest();for(const id of SAVED.keys())await GTNative.removeImage(id);await GTNative.widget({})}
@@ -616,11 +625,32 @@ function brunoLines(s,good){
   const turn=s.serious?BRUNO_SERIOUS:(s.cat==="Animals"&&hash(s.id)%2)?BRUNO_ANIMALS:(BRUNO_TAG[s.tag]||BRUNO_TAG.Progress);
   return [t(open),t(turn)];
 }
-const BR={};  // per-story step: 0 gloomy, 1 came round, 2 tucked away
-function bruno(key,lines){
-  if(S.bruno===false)return "";
-  const step=BR[key]||0,txt=step===2?"":lines[Math.min(step,lines.length-1)],happy=lines.length===1||step>=1;
-  return `<button class="bruno ${step===2?"small":""}" data-a="bruno" data-k="${esc(key)}" data-n="${lines.length}" aria-label="${step===2?t("Show Bruno"):t("Bruno says: {0}",esc(txt))}">${brunoFace(happy)}<span class="bubble"><b>Bruno</b>${esc(txt)}${step===0&&lines.length>1?`<span class="hint">${t("Tap to hear the rest")}</span>`:""}</span></button>`;
+const BRUNO_IDLE=["Still here. Still unconvinced.","Pick a story. I'll be here, doubting it.","I've read the headlines. Suspiciously pleasant."];
+/* the corner assistant: what he can say on the current screen */
+function brunoContext(){
+  const sc=S.screen;
+  if(sc==="article"){const s=byId(S.p.id);if(s)return {key:"a"+s.id,lines:brunoLines(s,S.p.good),auto:true}}
+  if(sc==="dose"){const dose=doseList(),i=S.p.i||0;
+    if(i>=dose.length)return {key:"dose-done",lines:[t(BRUNO_EVENT.dose)],auto:true};
+    return {key:"d"+dose[i].id,lines:brunoLines(dose[i]),auto:true}}
+  if(sc==="ob5")return {key:"intro",lines:[t(BRUNO_EVENT.intro)],auto:true};
+  if(sc==="home"&&!S.p.mood){const dose=doseList();if(dose.length&&dose.every(s=>S.read.includes(s.id)))return {key:"caught",lines:[t(BRUNO_EVENT.caught)],auto:true}}
+  if(["splash","ob1","ob2","ob3","obr","ob4","rest"].includes(sc))return null;
+  return {key:"idle-"+sc,lines:[t(BRUNO_IDLE[hash(sc)%BRUNO_IDLE.length])],auto:false};
+}
+const BRS={key:null,step:0,open:false},BR_SEEN=new Set();
+function renderBruno(){
+  const el=$("bruno"),phone=el.parentNode,ctx=S.bruno===false||locked?null:brunoContext();
+  phone.classList.toggle("has-bruno",!!ctx);
+  if(!ctx){el.hidden=true;el.innerHTML="";return}
+  if(ctx.key!==BRS.key){BRS.key=ctx.key;BRS.step=0;BRS.open=ctx.auto&&!BR_SEEN.has(ctx.key);BR_SEEN.add(ctx.key)}
+  const n=ctx.lines.length,step=Math.min(BRS.step,n-1),happy=n===1||step>=1,txt=ctx.lines[step];
+  // above the tab bar; on screens without it, top right, clear of the buttons at the bottom
+  const nav=$("nav");el.classList.toggle("attop",nav.hidden);
+  if(nav.hidden){el.style.bottom="auto";el.style.top=(S.screen==="dose"?64:16)+"px"}else{el.style.top="auto";el.style.bottom=(nav.offsetHeight+12)+"px"}
+  el.hidden=false;
+  el.innerHTML=`${BRS.open?`<div class="bubble" role="status" aria-live="polite"><b>Bruno</b><button data-a="brunoNext" style="text-align:left">${esc(txt)}</button>${step===0&&n>1?`<span class="hint">${t("Tap to hear the rest")}</span>`:""}<button class="x" data-a="brunoClose" aria-label="${t("Close")}">${ic("close")}</button></div>`:""}
+   <button class="avatar-btn" data-a="brunoTap" aria-label="${BRS.open?t("Bruno says: {0}",esc(txt)):t("Show Bruno")}" aria-expanded="${BRS.open}">${brunoFace(happy)}</button>`;
 }
 
 const ago=iso=>{const m=Math.max(0,Math.round((Date.now()-Date.parse(iso))/6e4));return m<1?t("just now"):m<60?t("{0} min ago",m):m<1440?t("{0} h ago",Math.round(m/60)):t("{0} d ago",Math.round(m/1440))};
@@ -768,7 +798,7 @@ V.obr=()=>`<div class="full">${steps(4)}<h1>${t("Where should good news come fro
 const amounts=()=>[[5,"Quick dose","5 stories a day"],[10,"Balanced","10 stories a day"],["explorer","Explorer","More stories whenever I want"]].map(([v,a,d])=>`<button class="opt" data-a="amount" data-v="${v}" aria-pressed="${String(S.prefs.amount)===String(v)}"><span class="radio"></span><span><b>${t(a)}</b><span class="muted">${t(d)}</span></span></button>`).join("");
 V.ob4=()=>`<div class="full">${steps(5)}<h1>${t("How much news do you want?")}</h1><p class="lead">${t("You can finish your day's stories. Nothing here scrolls forever.")}</p>${amounts()}<div class="spacer"></div><button class="btn" data-a="go" data-to="ob5">${t("Continue")}</button></div>`;
 V.ob5=()=>{S.onboarded=true;return V.ob5x()};
-V.ob5x=()=>`<div class="full"><div class="spacer"></div><div style="text-align:center">${MARK}</div><h1 style="text-align:center">${t("Your positive corner of the internet is ready.")}</h1><p class="lead" style="text-align:center">${t("Topics: {0} · Sources: {1} · Regions: {2} · Stories today: {3}",S.prefs.cats.size,S.prefs.sources.length,S.prefs.regions.size||t("Everywhere"),doseSize())}</p>${bruno("intro",[t(BRUNO_EVENT.intro)])}<div class="spacer"></div><button class="btn" data-a="tab" data-to="home">${t("Start discovering")}</button></div>`;
+V.ob5x=()=>`<div class="full"><div class="spacer"></div><div style="text-align:center">${MARK}</div><h1 style="text-align:center">${t("Your positive corner of the internet is ready.")}</h1><p class="lead" style="text-align:center">${t("Topics: {0} · Sources: {1} · Regions: {2} · Stories today: {3}",S.prefs.cats.size,S.prefs.sources.length,S.prefs.regions.size||t("Everywhere"),doseSize())}</p><div class="spacer"></div><button class="btn" data-a="tab" data-to="home">${t("Start discovering")}</button></div>`;
 
 V.home=()=>{
   const {list,outside}=ranked(),n=doseSize(),dose=list.slice(0,n),done=dose.filter(s=>S.read.includes(s.id)).length;
@@ -785,7 +815,6 @@ V.home=()=>{
   ${mood?`<div class="banner"><span>${t("Showing “{0}” for now. Your preferences are unchanged.",t(mood[1]))}</span><button data-a="mood" data-m="">${t("Clear")}</button></div>`:""}
   ${feed.map(s=>card(s,mood?"":s.id===outside?t("Outside your usual topics"):S.prefs.regions.has(s.country)?t("From your regions"):"")).join("")||empty(t("Nothing matches right now."))}
   ${mood?"":`<div class="stop"><span class="leaf">${ic("leaf")}</span><h3>${done>=dose.length?t("You're caught up with today's good news."):t("That's today's selection.")}</h3><p class="muted">${t("That's enough scrolling for now. There will be more good things tomorrow.")}</p>
-   ${done>=dose.length?bruno("caught",[t(BRUNO_EVENT.caught)]):""}
    <button class="btn" data-a="go" data-to="rest">${t("I'm done for now")}</button>${more?`<button class="btn ghost" data-a="more">${t("Show me one more")}</button>`:`<p class="small muted">${isLive()?t("You've seen every story for now. Refresh later for more."):t("You've seen every story in this prototype.")}</p>`}</div>`}
   </div>`;
 };
@@ -793,12 +822,11 @@ V.rest=()=>`<div class="full" style="text-align:center;align-items:center"><div 
 
 V.dose=()=>{
   const dose=doseList(),i=S.p.i||0;
-  if(i>=dose.length)return `<div class="full" style="text-align:center;align-items:center"><div class="spacer"></div><span class="leaf" style="width:64px;height:64px">${ic("check")}</span><h1>${t("{0}/{1} positive stories explored today",dose.length,dose.length)}</h1><p class="lead">${t("You're caught up. There will be more good things tomorrow.")}</p>${bruno("dose-done",[t(BRUNO_EVENT.dose)])}<div class="spacer"></div><button class="btn" data-a="go" data-to="rest">${t("I'm done for now")}</button><button class="btn ghost" data-a="tab" data-to="home">${t("Back to home")}</button></div>`;
+  if(i>=dose.length)return `<div class="full" style="text-align:center;align-items:center"><div class="spacer"></div><span class="leaf" style="width:64px;height:64px">${ic("check")}</span><h1>${t("{0}/{1} positive stories explored today",dose.length,dose.length)}</h1><p class="lead">${t("You're caught up. There will be more good things tomorrow.")}</p><div class="spacer"></div><button class="btn" data-a="go" data-to="rest">${t("I'm done for now")}</button><button class="btn ghost" data-a="tab" data-to="home">${t("Back to home")}</button></div>`;
   const s=dose[i];markRead(s.id);
   return `<div class="top"><button class="iconbtn" data-a="tab" data-to="home" aria-label="${t("Close")}">${ic("close")}</button><h2>${t("Daily dose")}</h2><span class="muted small" style="padding-right:8px">${t("{0} of {1}",i+1,dose.length)}</span></div>
   <div class="pad" style="padding-top:6px"><div class="pips">${dose.map((x,j)=>`<i style="background:${j<=i?"var(--forest)":"var(--line)"}"></i>`).join("")}</div>
   <div class="card" style="cursor:default"><div class="art">${art(s.art)}<span class="tag">${t(s.tag)}</span></div><div class="cbody" style="padding-bottom:16px"><div class="cat">${esc(t(s.cat))} · ${t(s.country)}</div><h3>${esc(st(s,"title"))}</h3><p style="color:var(--ink)">${esc(st(s,"what")||st(s,"sum"))}</p>${st(s,"why")||st(s,"excerpt")?`<p>${esc(st(s,"why")||(st(s,"excerpt")!==st(s,"sum")?st(s,"excerpt"):""))}</p>`:""}<div class="meta"><span>${esc(s.source)}</span><span>${fmt(s.date)}</span><span class="ai">${t("AI summary")}</span></div></div></div>
-  ${bruno("d"+s.id,brunoLines(s))}
   <button class="btn" data-a="doseNext">${i+1===dose.length?t("Finish"):t("Next story")}</button><button class="btn ghost" data-a="open" data-id="${s.id}">${t("Read the full summary")}</button></div>`;
 };
 
@@ -815,7 +843,6 @@ V.article=()=>{
     <div><h4>${t("What happened")}</h4><p>${esc(st(s,"what"))}</p></div><div><h4>${t("Why it matters")}</h4><p>${esc(st(s,"why"))}</p></div><div><h4>${t("The bigger picture")}</h4><p>${esc(st(s,"bigger"))}</p></div></div>`
     :!(st(s,"excerpt")||st(s,"sum"))?`<div class="pubbox"><p>${t("This story was found through a news search, which shares only the headline. Read the full story at {0}.",esc(s.source))}</p></div>`
     :`<div class="pubbox"><div class="eyebrow">${t("From the publisher")}</div><p>${esc(st(s,"excerpt")||st(s,"sum"))}</p><p class="small muted">${t("The publisher's own description, not an AI summary.")}${trNote(s)?" "+trNote(s):""}</p></div>`}
-   ${bruno("a"+s.id,brunoLines(s,S.p.good))}
    <a class="btn" href="${s.url}" target="_blank" rel="noopener">${t("Read original article")} ${ic("ext")}</a>
    <div><div class="eyebrow" style="margin-bottom:8px">${t("Also reported by")}</div><div class="also">${s.also.length?s.also.map(a=>`<a href="${a[1]}" target="_blank" rel="noopener">${esc(a[0])} ${ic("ext")}</a>`).join(""):`<span class="muted">${s.live?t("No other outlet in the app has reported this yet."):t("One source so far. Not yet independently confirmed.")}</span>`}</div></div>
    <div><div class="eyebrow" style="margin-bottom:8px">${t("Tune your feed")}</div><div class="tune">
@@ -961,6 +988,7 @@ function render(keep){
   persistSoon();
   const sc=$("screen"),y=sc.scrollTop;sc.innerHTML=V[S.screen]();sc.scrollTop=keep?y:0;
   const nav=$("nav");nav.hidden=NONAV.includes(S.screen);
+  setTimeout(renderBruno,0);
   nav.innerHTML=Object.entries(TABS).map(([k,[i,l]])=>k==="good"?`<button class="center" data-a="good" aria-label="${t("Give me something good")}"><span class="orb">${ic(i)}</span>${t(l)}</button>`:`<button data-a="tab" data-to="${k}" ${S.tab===k&&!nav.hidden?'aria-current="page"':""}>${ic(i)}${t(l)}</button>`).join("");
 }
 function go(to,p={},push=true){if(push)S.stack.push({screen:S.screen,p:S.p});S.screen=to;S.p=p;closeSheet();render()}
@@ -1020,7 +1048,9 @@ const A={
   wipeYes:()=>wipeData(),
   close:()=>{if(NATIVE)GTNative.minimize();A.tab({to:"home"})},
   toast:d=>toast(d.t),
-  bruno:d=>{const n=+d.n,st=BR[d.k]||0;BR[d.k]=n===1?(st?0:2):(st+1)%3;render(1)},
+  brunoTap:()=>{const ctx=brunoContext();if(!BRS.open){BRS.open=true}else if(ctx&&BRS.step<ctx.lines.length-1){BRS.step++}else{BRS.open=false}renderBruno()},
+  brunoNext:()=>{const ctx=brunoContext();if(ctx&&BRS.step<ctx.lines.length-1)BRS.step++;else BRS.open=false;renderBruno()},
+  brunoClose:()=>{BRS.open=false;renderBruno()},
   brunoToggle:()=>{S.bruno=S.bruno===false;render(1)},
   refresh:()=>loadLive(true),
   ask:d=>{const r=ask(d.q);S.chat=(S.chat||[]).concat({me:d.q},r);render(1);const sc=$("screen");sc.scrollTop=sc.scrollHeight},
@@ -1042,6 +1072,7 @@ async function init(){
   await loadState();
   renderGuide();
   document.addEventListener("click",e=>{
+    if(BRS.open&&!e.target.closest("#bruno")){BRS.open=false;renderBruno()}  // a tap elsewhere closes Bruno's bubble and still works
     if(e.target.id==="sheet"){closeSheet();return}
     const ext=NATIVE&&e.target.closest('a[target="_blank"]');if(ext){e.preventDefault();GTNative.openUrl(ext.href);return}
     const el=e.target.closest("[data-a]");if(!el||el.disabled)return;
