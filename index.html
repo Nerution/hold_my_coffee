@@ -604,49 +604,41 @@ function brunoFace(happy){
   <path d="${happy?"M29 44.2q3 2.2 6 0":"M29 45.4q3-2.2 6 0"}" stroke="#1D2B23" stroke-width="1.3" fill="none" stroke-linecap="round"/>
   <path d="M15 50.5c10 5 24 5 34 0l1.8 5.6c-12.2 5-25.4 5-37.6 0z" fill="#1F3D2F"/><path d="M42 53l2.6 10 4.2-.8-1.8-10z" fill="#2F5A45"/></svg>`;
 }
-const BRUNO_OPEN=["Hmph.","Oh, wonderful. More good news.","I was having a perfectly gloomy day.","Let me guess. Something went right again?","Don't get your hopes up. I never do.","Good news? In this weather?"];
-const BRUNO_TAG={
-  "Breakthrough":"A breakthrough. I'll pretend I'm not impressed. …I'm a bit impressed.",
-  "Scientific Discovery":"Scientists found something new. Fine. That's genuinely interesting. Don't tell anyone I said so.",
-  "Conservation Success":"The animals are doing better. Good for them. Someone should be.",
-  "Recovery":"Things growing back. I suppose nature doesn't read the gloomy headlines either.",
-  "Human Kindness":"People being kind to strangers. Suspicious. …Lovely, actually.",
-  "Community Win":"Neighbours working together. Next they'll invite me. I won't go. Probably.",
-  "Milestone":"A record. I'd grumble, but it's quite a big one.",
-  "Good Trend":"The numbers are going the right way. I checked twice. Annoyingly, they still are.",
-  "Progress":"Progress. Slow, but progress. Like me getting out of bed.",
-};
-const BRUNO_SERIOUS="I don't do cheerful. But this one matters, and it's good. Even I'll say so.";
-const BRUNO_ANIMALS="As a badger, I approve of this. Reluctantly.";
-const BRUNO_EVENT={intro:"I'm Bruno. I'll be reading along. I don't expect to enjoy it.",dose:"You read all of them. Now you'll be insufferably cheerful all day, won't you.",
-  caught:"That's enough for today. Go outside. I'll stay here and be gloomy for both of us.",good:"The button for something good? Bold. Let's see."};
+/* Bruno's lines (English keys; translations in i18n.js) */
+const BRUNO_OPEN=["Hmph.", "Oh, wonderful. More good news.", "I was having a perfectly gloomy day.", "Let me guess. Something went right again?", "Don't get your hopes up. I never do.", "Good news? In this weather?", "Ugh. Another one.", "I'll read it. I won't enjoy it.", "Someone's been busy being useful again.", "I had my frown all ready for this.", "Wake me when something goes wrong.", "Is this the cheerful section again?", "Fine. Show me.", "Sigh.", "I read the headline twice, hoping it would get worse.", "Somewhere, a cloud is very disappointed.", "Another day, another suspiciously nice story.", "My glasses must be dirty. This looks positive.", "I prefer my news like my tea. Bitter.", "Right. Let's get this optimism over with."];
+const BRUNO_TAG={"Breakthrough": ["A breakthrough. I'll pretend I'm not impressed. …I'm a bit impressed.", "Years of work, and it actually paid off. Annoying for my worldview.", "First time ever, they say. Well. I suppose someone had to be first.", "I was going to say it would never work. It worked."], "Scientific Discovery": ["Scientists found something new. Fine. That's genuinely interesting. Don't tell anyone I said so.", "Something nobody knew yesterday. I liked yesterday. …Today is better.", "Curiosity, patience, data. Fine, that's how it's supposed to work.", "The world got a bit less mysterious. I'll allow it."], "Conservation Success": ["The animals are doing better. Good for them. Someone should be.", "Someone protected a habitat and it worked. Should've been done ages ago. Still. Good.", "Back from the brink. I know the feeling on Monday mornings.", "More of them than last year. Even I can count that high."], "Recovery": ["Things growing back. I suppose nature doesn't read the gloomy headlines either.", "It was broken, now it's mending. Unlike my mood.", "Comebacks. I don't trust them. This one seems real, though.", "Slowly, stubbornly getting better. Stubborn I can respect."], "Human Kindness": ["People being kind to strangers. Suspicious. …Lovely, actually.", "Nobody made them do it. They just did. Hmph. Nice.", "I'd make a cynical remark, but I'm a bit moved.", "Strangers helping strangers. Don't tell anyone, but that's my favourite kind."], "Community Win": ["Neighbours working together. Next they'll invite me. I won't go. Probably.", "A whole town agreeing on something. I've seen everything now.", "Small place, big effort. Fine, I'm impressed.", "They did it together. I do everything alone. Maybe they're onto something."], "Milestone": ["A record. I'd grumble, but it's quite a big one.", "History was made. I was napping. Typical.", "A first. I'll pretend I saw it coming.", "Medals, records, milestones. Somebody frame this."], "Good Trend": ["The numbers are going the right way. I checked twice. Annoyingly, they still are.", "One good year could be luck. This looks like a trend. Bother.", "The graph goes the wrong way for a grump. The right way for everyone else.", "Fewer bad things, more good ones. I'll need a new hobby."], "Progress": ["Progress. Slow, but progress. Like me getting out of bed.", "Not perfect. But better than before. That's more than I can say for my knees.", "Small steps. I take small steps too. Mostly to the fridge.", "It's going somewhere good. Slowly. Which is how I like things."]};
+const BRUNO_CAT={"Space": ["Space news. Good. It's far away, so it can't bother me.", "They looked up and found something wonderful. I looked up once and got rained on."], "Health & Medicine": ["Medicine that helps. I'll stop complaining about my back for a minute.", "Doctors and researchers, quietly getting it right. Fine. Respect."], "Science": ["Science keeps finding things. I keep losing my glasses. One of us is doing well.", "Clever people being clever. Fine. Somebody has to."], "Technology": ["A gadget that actually helps people. I'm told they exist.", "Technology doing something useful instead of beeping at me. Progress."], "Education": ["Children learning things. Better than I did. I spent school asleep.", "Teachers winning. Someone give them a holiday."], "Culture": ["Art, music, heritage. Fine, the world is a bit less dull today.", "Culture. I'd go and see it, if I ever left my burrow."], "Sports": ["Someone ran faster than everyone. I walked to the kitchen. We both tried.", "An underdog won. As a permanent underdog, I approve."], "Business & Economy": ["Good economic news. I checked my wallet. Still empty. But good for everyone else.", "Numbers that help actual people. Rare. Welcome."], "Environment & Nature": ["The planet catching a break. It's earned one. So have I, but never mind.", "Cleaner air, greener land. I'll have nothing left to cough about."], "Local Communities": ["A local story. Real neighbours, real street. Fine, it's lovely.", "Somebody improved their neighbourhood. Mine could use that. Hint."], "World": ["Good news from another corner of the world. They're everywhere, these good things.", "Different country, same suspicious positivity. It's spreading."], "Innovation": ["A clever new idea. I had one once. I forgot it.", "Someone invented a better way. I'll stick to my old ways. But theirs is better."], "Inspiring People": ["One person, a lot of stubbornness, a good result. My kind of story.", "Some people are just decent. It's infuriating. And quite nice."], "Humanity & Community": ["People looking after each other. I'll pretend I've got something in my eye.", "Generosity again. It keeps happening. I've stopped being surprised. Almost."]};
+const BRUNO_SERIOUS=["I don't do cheerful. But this one matters, and it's good. Even I'll say so.", "Not a funny subject. So no jokes. Just: this is good to hear.", "I'll save the grumbling for something else. This deserves better.", "Real people, real relief. Even a badger can see that's good.", "Careful hope is still hope. I'll keep mine quiet, but it's there."];
+const BRUNO_ANIMALS=["As a badger, I approve of this. Reluctantly.", "Animals doing well. As one myself, I'm obliged to say: good.", "Finally, news about someone with fur. Or feathers. Close enough.", "Good for them. Animals never complain about good news. I'll do it for them. …No, I won't."];
+const BRUNO_EVENT={"intro": ["I'm Bruno. I'll be reading along. I don't expect to enjoy it."], "dose": ["You read all of them. Now you'll be insufferably cheerful all day, won't you.", "Daily dose finished. Don't let it go to your head.", "All done. I'm not proud of you. …A little.", "That's your share of good news. Now go and do something useful. Like a nap."], "caught": ["That's enough for today. Go outside. I'll stay here and be gloomy for both of us.", "You've read everything. The world will have to make more good news. Unlikely. …It'll manage.", "No more for today. I'm relieved. My frown needs a rest.", "Caught up. Close the app. I'll guard the bad mood."], "good": ["The button for something good? Bold. Let's see.", "Random good news. Like a lottery, but you always win. Suspicious.", "Something good, on request. Better now?", "Pressing that button won't make me cheerful. Try anyway."]};
+const BRUNO_IDLE=["Still here. Still unconvinced.", "Pick a story. I'll be here, doubting it.", "I've read the headlines. Suspiciously pleasant.", "Don't mind me. Just here, being gloomy.", "Everything's fine. Suspiciously fine.", "I counted the good stories today. Too many. I lost count.", "Tap me again and I'll start smiling. Nobody wants that.", "I was promised bad news. This app is a disappointment. In a good way."];
 const hash=x=>{let h=0;for(const c of String(x))h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)};
 /* what Bruno says about a story: a gloomy opener, then the line where he comes round */
+const pick=(list,seed)=>list[hash(seed)%list.length];
 function brunoLines(s,good){
-  const open=good?BRUNO_EVENT.good:BRUNO_OPEN[hash(s.id)%BRUNO_OPEN.length];
-  const turn=s.serious?BRUNO_SERIOUS:(s.cat==="Animals"&&hash(s.id)%2)?BRUNO_ANIMALS:(BRUNO_TAG[s.tag]||BRUNO_TAG.Progress);
-  return [t(open),t(turn)];
+  const open=good?pick(BRUNO_EVENT.good,s.id+"g"):pick(BRUNO_OPEN,s.id+"o");
+  const pool=s.serious?BRUNO_SERIOUS:[...(BRUNO_TAG[s.tag]||BRUNO_TAG.Progress),...(BRUNO_CAT[s.cat]||[]),...(["Animals","Conservation"].includes(s.cat)?BRUNO_ANIMALS:[])];
+  return [t(open),t(pick(pool,s.id+"t"))];
 }
-const BRUNO_IDLE=["Still here. Still unconvinced.","Pick a story. I'll be here, doubting it.","I've read the headlines. Suspiciously pleasant."];
 /* the corner assistant: what he can say on the current screen */
 function brunoContext(){
   const sc=S.screen;
   if(sc==="article"){const s=byId(S.p.id);if(s)return {key:"a"+s.id,lines:brunoLines(s,S.p.good),auto:true}}
   if(sc==="dose"){const dose=doseList(),i=S.p.i||0;
-    if(i>=dose.length)return {key:"dose-done",lines:[t(BRUNO_EVENT.dose)],auto:true};
+    if(i>=dose.length)return {key:"dose-done",lines:[t(pick(BRUNO_EVENT.dose,new Date().toDateString()+"dose"))],auto:true};
     return {key:"d"+dose[i].id,lines:brunoLines(dose[i]),auto:true}}
-  if(sc==="ob5")return {key:"intro",lines:[t(BRUNO_EVENT.intro)],auto:true};
-  if(sc==="home"&&!S.p.mood){const dose=doseList();if(dose.length&&dose.every(s=>S.read.includes(s.id)))return {key:"caught",lines:[t(BRUNO_EVENT.caught)],auto:true}}
+  if(sc==="ob5")return {key:"intro",lines:[t(pick(BRUNO_EVENT.intro,new Date().toDateString()+"intro"))],auto:true};
+  if(sc==="home"&&!S.p.mood){const dose=doseList();if(dose.length&&dose.every(s=>S.read.includes(s.id)))return {key:"caught",lines:[t(pick(BRUNO_EVENT.caught,new Date().toDateString()+"caught"))],auto:true}}
   if(["splash","ob1","ob2","ob3","obr","ob4","rest"].includes(sc))return null;
-  return {key:"idle-"+sc,lines:[t(BRUNO_IDLE[hash(sc)%BRUNO_IDLE.length])],auto:sc==="home"?"once":false};
+  return {key:"idle-"+sc,lines:[t(BRUNO_IDLE[BRS.idle%BRUNO_IDLE.length])],auto:sc==="home"?"once":false};
 }
-const BRS={key:null,step:0,open:false},BR_SEEN=new Set();
+const BRS={key:null,step:0,open:false,idle:Math.floor(Math.random()*100)},BR_SEEN=new Set();
 function renderBruno(){
   const el=$("bruno"),phone=el.parentNode,ctx=S.bruno===false||locked?null:brunoContext();
   phone.classList.toggle("has-bruno",!!ctx);
   if(!ctx){el.hidden=true;el.innerHTML="";return}
   // he speaks up by himself: on every story and event, and once per visit on the home screen
-  if(ctx.key!==BRS.key){BRS.key=ctx.key;BRS.step=0;BRS.open=ctx.auto===true||(ctx.auto==="once"&&!BR_SEEN.has(ctx.key));BR_SEEN.add(ctx.key);
+  if(ctx.key!==BRS.key){if(ctx.key.startsWith("idle-"))ctx.lines=[t(BRUNO_IDLE[++BRS.idle%BRUNO_IDLE.length])];BRS.key=ctx.key;BRS.step=0;BRS.open=ctx.auto===true||(ctx.auto==="once"&&!BR_SEEN.has(ctx.key));BR_SEEN.add(ctx.key);
     clearTimeout(BRS.timer);
     // ...and comes round on his own a few seconds later
     if(BRS.open&&ctx.lines.length>1){const k=ctx.key;BRS.timer=setTimeout(()=>{if(BRS.key===k&&BRS.open&&BRS.step===0){BRS.step=1;renderBruno()}},2800)}}
