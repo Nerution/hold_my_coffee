@@ -1,4 +1,4 @@
-// Good Things news server: serves the app and a small JSON API.
+// Suspiciously positive news server: serves the app and a small JSON API.
 //   GET  /api/stories   current stories (refreshes first if the cache is older than REFRESH_MINUTES)
 //   POST /api/refresh   fetch the feeds again now (at most once per MIN_REFRESH_SECONDS)
 // Both take ?lang=pl|de|es. Stories then carry `tr: {lang: {...}}` once translated;
@@ -93,7 +93,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Good Things running at http://localhost:${PORT}`);
+  console.log(`Suspiciously positive running at http://localhost:${PORT}`);
   console.log(aiEnabled()
     ? `AI review on (${MODEL}). Only stories not seen before are sent to the model.`
     : "AI review off: set ANTHROPIC_API_KEY to turn on AI filtering and summaries. Using the heuristic filter.");

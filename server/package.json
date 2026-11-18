@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Fetches news feeds, keeps the positive and constructive stories, and serves them to the Good Things app.",
+  "description": "Fetches news feeds, keeps the positive and constructive stories, and serves them to the Suspiciously positive app.",
   "scripts": {
     "start": "node server.mjs",
     "test": "node --test test/*.test.mjs",

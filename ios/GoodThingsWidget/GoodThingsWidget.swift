@@ -39,10 +39,10 @@ struct Entry: TimelineEntry {
 }
 
 struct Provider: TimelineProvider {
-    private let placeholderText = NSLocalizedString("Open Good Things to load today's good news.", comment: "")
+    private let placeholderText = NSLocalizedString("Open Suspiciously positive to load today's good news.", comment: "")
 
     func placeholder(in context: Context) -> Entry {
-        Entry(date: .now, title: "Endangered sea turtles return to a restored beach", source: "Good Things", url: nil)
+        Entry(date: .now, title: "Endangered sea turtles return to a restored beach", source: "Suspiciously positive", url: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
@@ -80,7 +80,7 @@ struct GoodThingsWidgetView: View {
     var entry: Entry
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Good Things")
+            Text("Suspiciously positive")
                 .font(.caption2.weight(.semibold))
                 .textCase(.uppercase)
                 .foregroundStyle(accent)

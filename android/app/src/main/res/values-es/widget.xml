@@ -2,5 +2,5 @@
 <resources>
     <string name="widget_name">Buenas noticias</string>
     <string name="widget_description">La buena noticia más destacada del día</string>
-    <string name="widget_empty">Abre Good Things para cargar las buenas noticias de hoy.</string>
+    <string name="widget_empty">Abre Suspiciously positive para cargar las buenas noticias de hoy.</string>
 </resources>

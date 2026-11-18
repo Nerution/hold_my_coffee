@@ -74,7 +74,7 @@ window.GTNative = {
     }),
     authenticate: async reason => {
       try {
-        await BiometricAuth.authenticate({ reason, cancelTitle: "Cancel", allowDeviceCredential: true, iosFallbackTitle: "Use passcode", androidTitle: "Good Things", androidSubtitle: reason });
+        await BiometricAuth.authenticate({ reason, cancelTitle: "Cancel", allowDeviceCredential: true, iosFallbackTitle: "Use passcode", androidTitle: "Suspiciously positive", androidSubtitle: reason });
         return true;
       } catch { return false; }
     },

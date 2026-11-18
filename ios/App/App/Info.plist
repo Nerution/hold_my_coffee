@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Good Things</string>
+        <string>Suspiciously positive</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -67,7 +67,7 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Face ID can lock Good Things so only you can open it. It is off unless you turn on App lock.</string>
+	<string>Face ID can lock Suspiciously positive so only you can open it. It is off unless you turn on App lock.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

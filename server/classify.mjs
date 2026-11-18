@@ -30,7 +30,7 @@ const Review = z.object({
 });
 const Batch = z.object({ reviews: z.array(Review) });
 
-const SYSTEM = `You are the editorial filter for Good Things, an app that shows positive, constructive news without pretending bad news doesn't exist. Its philosophy: optimistic, not naive.
+const SYSTEM = `You are the editorial filter for Suspiciously positive, an app that shows positive, constructive news without pretending bad news doesn't exist. Its philosophy: optimistic, not naive.
 
 For each item you get a headline and a short excerpt from a news feed. Decide whether it belongs in the app, and if it does, classify and summarise it.
 

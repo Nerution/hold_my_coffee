@@ -24,7 +24,7 @@ const Item = z.object({
 });
 const Out = z.object({ translations: z.array(Item) });
 
-const system = lang => `You translate short news texts for Good Things, a calm positive-news app, into ${LANGS[lang]}. Each item says which language it is written in ("from").
+const system = lang => `You translate short news texts for Suspiciously positive, a calm positive-news app, into ${LANGS[lang]}. Each item says which language it is written in ("from").
 
 Translate each field faithfully and naturally, as a native ${LANGS[lang]} news editor would write it. Keep the meaning, facts, numbers, names and caveats exactly; do not add, drop or soften anything, and do not add hype. Keep the names of people, organisations and news outlets as they are; use the usual ${LANGS[lang]} names for countries and places. Headlines should read like ${LANGS[lang]} headlines (sentence case unless ${LANGS[lang]} requires otherwise). If a field is empty, return it empty.`;
 

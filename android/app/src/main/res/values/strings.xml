@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Good Things</string>
-    <string name="title_activity_main">Good Things</string>
+    <string name="app_name">Suspiciously positive</string>
+    <string name="title_activity_main">Suspiciously positive</string>
     <string name="package_name">com.goodthings.news</string>
     <string name="custom_url_scheme">com.goodthings.news</string>
 </resources>

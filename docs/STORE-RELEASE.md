@@ -1,4 +1,4 @@
-# Publishing Good Things on Google Play and the App Store
+# Publishing Suspiciously positive on Google Play and the App Store
 
 The mobile app is a [Capacitor](https://capacitorjs.com) project: the web app is bundled inside native Android and iOS shells, with native plugins for the device features. This guide covers everything from a first test build to the store forms.
 
@@ -30,7 +30,7 @@ The bridge to the device is `src/native.js`. The page calls it as `window.GTNati
    - To use your own (for example `com.yourname.goodthings`), change it in `capacitor.config.json`.
    - On Android, also change `namespace` and `applicationId` in `android/app/build.gradle`, and move `MainActivity.java` and `GoodNewsWidget.java` into the matching package folder.
    - On iOS, change the Bundle Identifier in Xcode.
-2. **Check the name.** "Good Things" is a working title, and both stores may already have an app with that name.
+2. **Check the name.** Check that no app on either store already uses "Suspiciously positive". Store listings allow up to 30 characters, and the name has 21.
 3. **Fill in the privacy policy.** Replace every highlighted `[…]` in `privacy.html`: date, your name or company and address, contact email, server address and hosting provider. Then redeploy the server. The policy will be at `https://<your server>/privacy.html`.
 
 ## Build

@@ -25,7 +25,7 @@ const fontLinks = /<link rel="preconnect" href="https:\/\/fonts\.googleapis\.com
 if (!fontLinks.test(html)) throw new Error("Google Fonts links not found in index.html; update build-web.mjs");
 html = html
   .replace(fontLinks, '<link rel="stylesheet" href="fonts/fonts.css">')
-  .replace("<title>Good Things App Prototype</title>", "<title>Good Things</title>")
+  .replace("<title>Suspiciously positive · prototype</title>", "<title>Suspiciously positive</title>")
   .replace('<html lang="en">', '<html lang="en" class="app">')
   .replace('<script src="i18n.js"></script>', '<script src="config.js"></script>\n<script src="native.js"></script>\n<script src="i18n.js"></script>');
 await writeFile(path.join(out, "index.html"), html);

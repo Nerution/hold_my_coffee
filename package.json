@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Good Things: positive, sourced news. Web app and Capacitor shell for Android and iOS.",
+  "description": "Suspiciously positive: positive, sourced news. Web app and Capacitor shell for Android and iOS.",
   "scripts": {
     "build": "node scripts/build-web.mjs",
     "sync": "npm run build && npx cap sync",

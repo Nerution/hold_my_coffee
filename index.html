@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Good Things App Prototype</title>
+<title>Suspiciously positive · prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
 <style>
@@ -267,7 +267,7 @@ nav .center .orb svg{width:26px;height:26px}
 <div class="stage">
   <aside class="guide" aria-label="Prototype index">
     <div class="eyebrow" data-t="Clickable prototype">Clickable prototype</div>
-    <h1>Good Things</h1>
+    <h1>Suspiciously positive</h1>
     <p data-t="Working title. Tap through the phone, or jump straight to a screen.">Working title. Tap through the phone, or jump straight to a screen.</p>
     <div class="eyebrow" data-t="App language">App language</div>
     <div class="chips" id="langs"></div>
@@ -572,15 +572,15 @@ async function syncSaved(){
 /* the daily digest reminder, scheduled on the phone itself */
 async function applyNotif(ask){
   if(!NATIVE)return;
-  if(S.notif.freq!=="Off"&&ask){const p=await GTNative.notifications.permission();if(p!=="granted"&&await GTNative.notifications.request()!=="granted"){toast(t("Notifications are turned off for Good Things in your phone's settings."));return}}
+  if(S.notif.freq!=="Off"&&ask){const p=await GTNative.notifications.permission();if(p!=="granted"&&await GTNative.notifications.request()!=="granted"){toast(t("Notifications are turned off for Suspiciously positive in your phone's settings."));return}}
   const ok=await GTNative.notifications.scheduleDigest({freq:S.notif.freq,time:S.notif.time,title:t("Your daily dose of good news is ready"),body:t("A few calm, sourced stories are waiting when you have a moment.")});
   if(ok&&ask&&S.notif.freq!=="Off")toast(t("Reminder set: {0} at {1}",t(S.notif.freq),S.notif.time));
 }
 /* optional app lock */
 const BIO={available:false,type:"fingerprint"};
 let locked=false,pausedAt=0;
-function showLock(){locked=true;const l=$("lock");l.innerHTML=`${MARK}<h2>${t("Good Things is locked")}</h2><p class="muted">${t("Unlock with {0} to continue.",t(BIO.type))}</p><button class="btn" data-a="unlock">${t("Unlock")}</button>`;l.classList.add("on")}
-async function unlock(){if(await GTNative.biometric.authenticate(t("Unlock Good Things"))){locked=false;$("lock").classList.remove("on");renderBruno()}}
+function showLock(){locked=true;const l=$("lock");l.innerHTML=`${MARK}<h2>${t("Suspiciously positive is locked")}</h2><p class="muted">${t("Unlock with {0} to continue.",t(BIO.type))}</p><button class="btn" data-a="unlock">${t("Unlock")}</button>`;l.classList.add("on")}
+async function unlock(){if(await GTNative.biometric.authenticate(t("Unlock Suspiciously positive"))){locked=false;$("lock").classList.remove("on");renderBruno()}}
 async function wipeData(){
   for(const k of ["gt-state","gt-saved","gt-stories"])await store.remove(k);
   if(NATIVE){await GTNative.notifications.cancelDigest();for(const id of SAVED.keys())await GTNative.removeImage(id);await GTNative.widget({})}
@@ -638,20 +638,24 @@ function brunoContext(){
   if(sc==="ob5")return {key:"intro",lines:[t(BRUNO_EVENT.intro)],auto:true};
   if(sc==="home"&&!S.p.mood){const dose=doseList();if(dose.length&&dose.every(s=>S.read.includes(s.id)))return {key:"caught",lines:[t(BRUNO_EVENT.caught)],auto:true}}
   if(["splash","ob1","ob2","ob3","obr","ob4","rest"].includes(sc))return null;
-  return {key:"idle-"+sc,lines:[t(BRUNO_IDLE[hash(sc)%BRUNO_IDLE.length])],auto:false};
+  return {key:"idle-"+sc,lines:[t(BRUNO_IDLE[hash(sc)%BRUNO_IDLE.length])],auto:sc==="home"?"once":false};
 }
 const BRS={key:null,step:0,open:false},BR_SEEN=new Set();
 function renderBruno(){
   const el=$("bruno"),phone=el.parentNode,ctx=S.bruno===false||locked?null:brunoContext();
   phone.classList.toggle("has-bruno",!!ctx);
   if(!ctx){el.hidden=true;el.innerHTML="";return}
-  if(ctx.key!==BRS.key){BRS.key=ctx.key;BRS.step=0;BRS.open=ctx.auto&&!BR_SEEN.has(ctx.key);BR_SEEN.add(ctx.key)}
+  // he speaks up by himself: on every story and event, and once per visit on the home screen
+  if(ctx.key!==BRS.key){BRS.key=ctx.key;BRS.step=0;BRS.open=ctx.auto===true||(ctx.auto==="once"&&!BR_SEEN.has(ctx.key));BR_SEEN.add(ctx.key);
+    clearTimeout(BRS.timer);
+    // ...and comes round on his own a few seconds later
+    if(BRS.open&&ctx.lines.length>1){const k=ctx.key;BRS.timer=setTimeout(()=>{if(BRS.key===k&&BRS.open&&BRS.step===0){BRS.step=1;renderBruno()}},2800)}}
   const n=ctx.lines.length,step=Math.min(BRS.step,n-1),happy=n===1||step>=1,txt=ctx.lines[step];
   // above the tab bar; on screens without it, top right, clear of the buttons at the bottom
   const nav=$("nav");el.classList.toggle("attop",nav.hidden);
   if(nav.hidden){el.style.bottom="auto";el.style.top=(S.screen==="dose"?64:16)+"px"}else{el.style.top="auto";el.style.bottom=(nav.offsetHeight+12)+"px"}
   el.hidden=false;
-  el.innerHTML=`${BRS.open?`<div class="bubble" role="status" aria-live="polite"><b>Bruno</b><button data-a="brunoNext" style="text-align:left">${esc(txt)}</button>${step===0&&n>1?`<span class="hint">${t("Tap to hear the rest")}</span>`:""}<button class="x" data-a="brunoClose" aria-label="${t("Close")}">${ic("close")}</button></div>`:""}
+  el.innerHTML=`${BRS.open?`<div class="bubble" role="status" aria-live="polite"><b>Bruno</b><button data-a="brunoNext" style="text-align:left">${esc(txt)}</button><button class="x" data-a="brunoClose" aria-label="${t("Close")}">${ic("close")}</button></div>`:""}
    <button class="avatar-btn" data-a="brunoTap" aria-label="${BRS.open?t("Bruno says: {0}",esc(txt)):t("Show Bruno")}" aria-expanded="${BRS.open}">${brunoFace(happy)}</button>`;
 }
 
@@ -787,7 +791,7 @@ const langBtn=()=>`<button class="langbtn" data-a="langSheet" aria-label="${t("L
 
 /* ---------- screens ---------- */
 const V={};
-V.splash=()=>`<div class="splash" data-a="go" data-to="ob1"><div>${MARK}<h1>Good Things</h1><p>${t("Good things are happening too.")}</p></div></div>`;
+V.splash=()=>`<div class="splash" data-a="go" data-to="ob1"><div>${MARK}<h1>Suspiciously positive</h1><p>${t("Good things are happening.")}</p></div></div>`;
 const steps=n=>`<div class="steps">${[1,2,3,4,5].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</div>`;
 V.ob1=()=>`<div class="full"><div class="rhead">${steps(1)}${langBtn()}</div><div class="hero">${art("forest")}</div><h1>${t("The world isn't only bad news.")}</h1><p class="lead">${t("Discover real positive developments happening every day, from sources you can check.")}</p><div class="spacer"></div><button class="btn" data-a="go" data-to="ob2">${t("Continue")}</button></div>`;
 V.ob2=()=>`<div class="full">${steps(2)}<h1>${t("What gives you hope?")}</h1><p class="lead">${t("Pick a few topics. You'll still see the occasional story from outside them.")}</p>
@@ -871,7 +875,7 @@ V.discover=()=>`<div class="pad"><h1 style="font-size:28px">${t("Discover")}</h1
  <div class="hscroll">${QUERIES.map(q=>`<button class="chip" data-a="search" data-q="${t(q)}">${t(q)}</button>`).join("")}</div>
  <div class="grid2"><button class="tile wide" data-a="go" data-to="map">${ic("globe")}<span><b>${t("Good News Map")}</b><br><span class="small muted">${t("Good things, by place")}</span></span></button>
   <button class="tile wide" data-a="go" data-to="weekly">${ic("chart")}<span><b>${t("This Week Wasn't All Bad")}</b><br><span class="small muted">${t("Your weekly perspective")}</span></span></button>
-  <button class="tile wide" data-a="go" data-to="assistant">${ic("spark")}<span><b>${t("Ask Good Things")}</b><br><span class="small muted">${t("AI assistant · answers only from verified stories")}</span></span></button></div>
+  <button class="tile wide" data-a="go" data-to="assistant">${ic("spark")}<span><b>${t("Ask the assistant")}</b><br><span class="small muted">${t("AI assistant · answers only from verified stories")}</span></span></button></div>
  <div class="eyebrow">${t("What do you need right now?")}</div><div class="grid2">${MOODS.map(m=>`<button class="tile mood" data-a="go" data-to="moodfeed" data-m="${m[0]}"><b>${t(m[1])}</b></button>`).join("")}</div>
  <div class="eyebrow">${t("Browse by topic")}</div><div class="grid2">${CATS.map(c=>{const n=STORIES.filter(s=>s.cat===c).length;return `<button class="tile" data-a="go" data-to="category" data-c="${esc(c)}"><b>${esc(t(c))}</b><span class="small muted">${n?t("Stories: {0}",n):isLive()?t("None right now"):t("No sample stories")}</span></button>`}).join("")}</div></div>`;
 V.category=()=>{const l=STORIES.filter(s=>s.cat===S.p.c);return bar(esc(t(S.p.c)))+`<div class="pad" style="padding-top:8px">${l.map(s=>card(s)).join("")||empty(isLive()?t("No stories on this topic from the last {0} days. Refresh later, or explore another topic.",LIVE.windowDays):t("No sample stories for this topic in the prototype. The live app would fill it from verified sources."))}</div>`};
@@ -909,7 +913,7 @@ function ask(q){
   return {ids:out,calm,note};
 }
 V.assistant=()=>{const c=S.chat||[];
- return bar(t("Ask Good Things"),`<span class="ai" style="margin-left:auto">${t("Preview")}</span>`)+`<div class="pad" style="padding-top:8px;min-height:calc(100% - 64px);display:flex;flex-direction:column">
+ return bar(t("Ask the assistant"),`<span class="ai" style="margin-left:auto">${t("Preview")}</span>`)+`<div class="pad" style="padding-top:8px;min-height:calc(100% - 64px);display:flex;flex-direction:column">
  <div class="chat">
   <div class="bub bot"><span>${t("Ask about real progress. I only answer from verified stories in the app, and every card links to its publisher. If nothing fits, I'll say so instead of making something up.")}</span></div>
   ${c.map(m=>m.me?`<div class="bub me">${esc(m.me)}</div>`:`<div class="bub bot">${m.calm?`<span>${t("That's understandable. Here is some real progress, at your own pace.")}</span>`:""}<span>${m.ids.length?(m.ids.length===1?t("Here is one encouraging development from the verified library."):t("Here are {0} encouraging developments from the verified library.",m.ids.length)):t("I couldn't find a verified story about that, and I won't invent one. Try a broader topic or a different place.")}</span>${m.note?`<span class="small muted">${m.note}</span>`:""}${m.ids.map(id=>mini(byId(id))).join("")}<span class="asknote"><span class="ai">${t("AI")}</span>${t("Reply written by AI. The stories are real and sourced.")}</span></div>`).join("")}
@@ -959,7 +963,7 @@ V.profile=()=>{const r=S.read.map(byId),cnt=cs=>r.filter(s=>cs.includes(s.cat)).
  ${BIO.available?`<div class="row">${ic("lock")}<span class="grow"><b>${t("App lock")}</b><div class="sub">${t("Ask for {0} when the app opens",t(BIO.type))}</div></span><button class="switch" role="switch" aria-checked="${!!S.lock}" aria-label="${t("App lock")}" data-a="lockToggle"></button></div>`:""}
  ${row("shield",t("Privacy"),t("What the app stores and sends"),"privacy")}</div></div>`};
 V.privacy=()=>bar(t("Privacy"))+`<div class="pad" style="padding-top:8px">
- <p class="lead">${t("Good Things has no accounts, no ads and no tracking.")}</p>
+ <p class="lead">${t("Suspiciously positive has no accounts, no ads and no tracking.")}</p>
  <div class="rows">${[
   ["user",t("On your device only"),t("Your topics, sources, saved stories, reading history, name and settings are stored on this device. They are never sent to us.")],
   ["globe",t("When stories load"),t("The app asks our news service for the latest stories in your language. Like any website, the service sees your IP address for that request. It does not keep a profile of you.")],
