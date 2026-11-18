@@ -169,8 +169,8 @@ What the server never does:
 - `V`: one function per screen, each returning an HTML string.
 - `brunoFace()`, `brunoLines()`, `brunoContext()` and `renderBruno()`: Bruno, the grumpy badger, a small assistant in the corner of the screen.
   - **Where he sits:** bottom right above the tab bar, or top right on screens without it, so he never covers their buttons.
-  - **When he speaks:** on his own, with no tapping. Every time a reader opens an article or a Daily Dose story, finishes the dose, is caught up, or finishes onboarding, his bubble opens with a gloomy line. About 3 seconds later he comes round with the grudging one. On the home screen he makes one remark per visit.
-  - **Tapping:** tapping the bubble skips ahead or closes it, and a tap elsewhere or the × closes it. On other screens, tapping him gives a short grumble.
+  - **When he speaks:** one bubble per screen visit, shown on arrival, on every article and Daily Dose story, at the end of the dose, when the reader is caught up, at the end of onboarding, and once per session on the home screen. The bubble holds his whole comment, the gloomy line then the grudging one, and his frown turns into a smile. It closes by itself after 6 to 13 seconds, depending on length. Background updates, such as stories loading, translations or refreshes, never start a new bubble.
+  - **Tapping:** tapping the bubble, the × or anywhere else closes it. Tapping Bruno brings the comment back, or on other screens gives a short grumble.
   - **His lines** are fixed and translated in `i18n.js`. They are picked per story from its impact tag, with a gentler line for serious subjects.
   - **Turning him off:** in Personalisation.
 - `ask()` and `V.assistant`: the AI assistant preview. It only retrieves stories already loaded, and says so when nothing matches.

@@ -146,7 +146,8 @@ input[type=text],input[type=search],input[type=time]{font:inherit;color:var(--in
 #bruno .face{width:58px;height:58px;display:block;border-radius:50%}
 #bruno .bubble{pointer-events:auto;position:relative;max-width:min(260px,calc(100vw - 40px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:18px 18px 4px 18px;padding:10px 34px 11px 14px;font-size:14.5px;line-height:1.42;box-shadow:0 8px 24px rgba(0,0,0,.14);text-align:left;animation:bubble-in .22s ease-out}
 #bruno .bubble b{display:block;font-weight:600;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--sage-ink);margin-bottom:2px}
-#bruno .bubble .hint{display:block;font-size:11.5px;color:var(--muted);margin-top:5px}
+#bruno .bubble .say span{display:block}
+#bruno .bubble .say span+span{margin-top:4px}
 #bruno .bubble .x{position:absolute;top:6px;right:6px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:var(--muted)}
 #bruno .bubble .x .ic{width:15px;height:15px}
 #bruno .bubble:after{content:"";position:absolute;right:20px;bottom:-7px;width:12px;height:12px;background:var(--surface);border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg)}
@@ -632,23 +633,37 @@ function brunoContext(){
   if(["splash","ob1","ob2","ob3","obr","ob4","rest"].includes(sc))return null;
   return {key:"idle-"+sc,lines:[t(BRUNO_IDLE[BRS.idle%BRUNO_IDLE.length])],auto:sc==="home"?"once":false};
 }
-const BRS={key:null,step:0,open:false,idle:Math.floor(Math.random()*100)},BR_SEEN=new Set();
+/* One rule everywhere: one bubble per screen visit, shown on arrival, with the whole comment
+   (gloomy line, then the grudging one; his face turns to a smile), closing on its own after a few
+   seconds. Background updates (stories loading, translations, refreshes) never start a new bubble. */
+const BRS={visit:null,lines:[],open:false,happy:false,idle:Math.floor(Math.random()*100)},BR_SEEN=new Set();
+const brVisit=()=>[S.screen,S.p.id||"",S.p.i||0,S.p.good?1:0].join("|");
+function brLines(ctx){return ctx.key.startsWith("idle-")?[t(BRUNO_IDLE[++BRS.idle%BRUNO_IDLE.length])]:ctx.lines}
+function brSay(lines){
+  clearTimeout(BRS.hideT);clearTimeout(BRS.smileT);
+  BRS.lines=lines;BRS.open=true;BRS.happy=lines.length===1;
+  if(!BRS.happy)BRS.smileT=setTimeout(()=>{BRS.happy=true;renderBruno()},1600);
+  const len=lines.join(" ").length;
+  BRS.hideT=setTimeout(()=>{BRS.open=false;renderBruno()},Math.min(13000,Math.max(6000,4500+55*len)));
+}
+function brHush(){clearTimeout(BRS.hideT);clearTimeout(BRS.smileT);BRS.open=false;BRS.happy=true}
 function renderBruno(){
   const el=$("bruno"),phone=el.parentNode,ctx=S.bruno===false||locked?null:brunoContext();
   phone.classList.toggle("has-bruno",!!ctx);
-  if(!ctx){el.hidden=true;el.innerHTML="";return}
-  // he speaks up by himself: on every story and event, and once per visit on the home screen
-  if(ctx.key!==BRS.key){if(ctx.key.startsWith("idle-"))ctx.lines=[t(BRUNO_IDLE[++BRS.idle%BRUNO_IDLE.length])];BRS.key=ctx.key;BRS.step=0;BRS.open=ctx.auto===true||(ctx.auto==="once"&&!BR_SEEN.has(ctx.key));BR_SEEN.add(ctx.key);
-    clearTimeout(BRS.timer);
-    // ...and comes round on his own a few seconds later
-    if(BRS.open&&ctx.lines.length>1){const k=ctx.key;BRS.timer=setTimeout(()=>{if(BRS.key===k&&BRS.open&&BRS.step===0){BRS.step=1;renderBruno()}},2800)}}
-  const n=ctx.lines.length,step=Math.min(BRS.step,n-1),happy=n===1||step>=1,txt=ctx.lines[step];
+  if(!ctx){el.hidden=true;el.innerHTML="";if(BRS.open)brHush();BRS.visit=null;return}
+  const visit=brVisit();
+  if(visit!==BRS.visit){                       // arrived on a new screen or story
+    BRS.visit=visit;brHush();
+    if(ctx.auto===true||(ctx.auto==="once"&&!BR_SEEN.has(ctx.key))){BR_SEEN.add(ctx.key);brSay(brLines(ctx))}
+    else BRS.lines=[];
+  }
   // above the tab bar; on screens without it, top right, clear of the buttons at the bottom
   const nav=$("nav");el.classList.toggle("attop",nav.hidden);
   if(nav.hidden){el.style.bottom="auto";el.style.top=(S.screen==="dose"?64:16)+"px"}else{el.style.top="auto";el.style.bottom=(nav.offsetHeight+12)+"px"}
   el.hidden=false;
-  el.innerHTML=`${BRS.open?`<div class="bubble" role="status" aria-live="polite"><b>Bruno</b><button data-a="brunoNext" style="text-align:left">${esc(txt)}</button><button class="x" data-a="brunoClose" aria-label="${t("Close")}">${ic("close")}</button></div>`:""}
-   <button class="avatar-btn" data-a="brunoTap" aria-label="${BRS.open?t("Bruno says: {0}",esc(txt)):t("Show Bruno")}" aria-expanded="${BRS.open}">${brunoFace(happy)}</button>`;
+  const said=BRS.lines.join(" ");
+  el.innerHTML=`${BRS.open?`<div class="bubble" role="status" aria-live="polite"><b>Bruno</b><button data-a="brunoClose" class="say" style="text-align:left">${BRS.lines.map(l=>`<span>${esc(l)}</span>`).join("")}</button><button class="x" data-a="brunoClose" aria-label="${t("Close")}">${ic("close")}</button></div>`:""}
+   <button class="avatar-btn" data-a="brunoTap" aria-label="${BRS.open?t("Bruno says: {0}",esc(said)):t("Show Bruno")}" aria-expanded="${BRS.open}">${brunoFace(BRS.open&&BRS.happy)}</button>`;
 }
 
 const ago=iso=>{const m=Math.max(0,Math.round((Date.now()-Date.parse(iso))/6e4));return m<1?t("just now"):m<60?t("{0} min ago",m):m<1440?t("{0} h ago",Math.round(m/60)):t("{0} d ago",Math.round(m/1440))};
@@ -1057,9 +1072,8 @@ const A={
   toast:d=>toast(d.t),
   moreSrc:d=>{MORE[d.k]=(MORE[d.k]||0)+10;render(1)},
   lessSrc:d=>{MORE[d.k]=0;render(1)},
-  brunoTap:()=>{const ctx=brunoContext();if(!BRS.open){BRS.open=true}else if(ctx&&BRS.step<ctx.lines.length-1){BRS.step++}else{BRS.open=false}renderBruno()},
-  brunoNext:()=>{const ctx=brunoContext();if(ctx&&BRS.step<ctx.lines.length-1)BRS.step++;else BRS.open=false;renderBruno()},
-  brunoClose:()=>{BRS.open=false;renderBruno()},
+  brunoTap:()=>{if(BRS.open)brHush();else{const ctx=brunoContext();if(ctx)brSay(ctx.key.startsWith("idle-")||!BRS.lines.length?brLines(ctx):BRS.lines)}renderBruno()},
+  brunoClose:()=>{brHush();renderBruno()},
   brunoToggle:()=>{S.bruno=S.bruno===false;render(1)},
   refresh:()=>loadLive(true),
   ask:d=>{const r=ask(d.q);S.chat=(S.chat||[]).concat({me:d.q},r);render(1);const sc=$("screen");sc.scrollTop=sc.scrollHeight},
@@ -1081,7 +1095,7 @@ async function init(){
   await loadState();
   renderGuide();
   document.addEventListener("click",e=>{
-    if(BRS.open&&!e.target.closest("#bruno")){BRS.open=false;renderBruno()}  // a tap elsewhere closes Bruno's bubble and still works
+    if(BRS.open&&!e.target.closest("#bruno")){brHush();renderBruno()}  // a tap elsewhere closes Bruno's bubble and still works
     if(e.target.id==="sheet"){closeSheet();return}
     const ext=NATIVE&&e.target.closest('a[target="_blank"]');if(ext){e.preventDefault();GTNative.openUrl(ext.href);return}
     const el=e.target.closest("[data-a]");if(!el||el.disabled)return;
